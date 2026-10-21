@@ -1,0 +1,23 @@
+[project]
+name = "internal-apps"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "psutil>=7.2.2",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "pywebview>=6.2.1",
+]
+
+[tool.uv]
+python-downloads = "never"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+    "uv>=0.13.4",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
