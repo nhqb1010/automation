@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- LEARN: the app shell. pywebview loads this page into the window; tools are
+     swapped into the content area without reloading the page. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bao Internal Apps</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-name">Bao Internal Apps</span>
+        <button class="icon-btn" id="collapse-btn" title="Collapse sidebar (⌘\)"></button>
+      </div>
+      <nav class="nav" id="tool-nav"></nav>
+      <div class="nav-spacer"></div>
+      <div class="nav-item" id="settings-nav" data-view="settings" title="Settings (⌘,)">
+        <span class="nav-icon" data-icon="settings"></span>
+        <span class="label">Settings</span>
+        <span class="kbd">⌘,</span>
+      </div>
+    </aside>
+    <main class="content" id="view"></main>
+  </div>
+
+  <script src="icons.js"></script>
+  <script src="charts.js"></script>
+  <script src="settings.js"></script>
+  <script src="shell.js"></script>
+</body>
+</html>

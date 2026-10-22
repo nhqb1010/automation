@@ -1,0 +1,161 @@
+/* System Monitor layout. Shared tokens come from the shell's style.css. */
+
+.sm .card-title [data-icon] { display: grid; color: var(--text-muted); }
+.sm .card-title svg { width: 14px; height: 14px; }
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+  margin-right: 6px;
+  animation: sm-pulse 2s infinite;
+}
+
+@keyframes sm-pulse { 50% { opacity: 0.35; } }
+
+/* LEARN: container queries. The content area is a size container, so the
+   grid reacts to the space the tool actually has (sidebar open or
+   collapsed), not to the whole window like a media query would. */
+.sm-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sm-storage { grid-column: 1 / -1; }
+
+@container (max-width: 960px) {
+  .sm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container (max-width: 620px) {
+  .sm-grid { grid-template-columns: 1fr; }
+}
+
+/* each card is its own size container too, for the bar / ring switch */
+.sm .card { container-type: inline-size; }
+
+.sm-hero { display: flex; align-items: center; gap: 16px; }
+.sm-hero-side { flex: 1; min-width: 0; }
+.stat-line { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.stat-line b { color: var(--text-primary); font-weight: 600; }
+
+
+
+/* per-core columns */
+.sm-cores { display: flex; gap: 6px; align-items: flex-end; height: 70px; margin-top: 14px; }
+.sm-core { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.sm-core .col { flex: 1; width: 100%; max-width: 22px; background: var(--track); border-radius: 4px; position: relative; overflow: hidden; }
+.sm-core .fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px 4px 0 0; transition: height 0.6s ease; }
+.sm-core .tag { font-size: 10px; color: var(--text-muted); }
+
+
+/* top apps */
+.top-toggle {
+  margin-top: 14px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 9px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.top-toggle [data-icon] { display: grid; transition: transform 0.2s; }
+.top-toggle svg { width: 12px; height: 12px; }
+.top-toggle.open [data-icon] { transform: rotate(90deg); }
+/* every row has the same height, and an open list reserves room for all of
+   them (--sm-top-count is set from Settings), so rows arriving never resize it */
+.sm { --sm-app-row-height: 38px; }
+.top-list { display: none; margin-top: 8px; }
+.top-list.open { display: block; min-height: calc(var(--sm-app-row-height) * var(--sm-top-count, 5)); }
+.top-empty { font-size: 12px; color: var(--text-muted); padding: 8px 2px; }
+
+.app-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 90px 52px 56px;
+  align-items: center;
+  gap: 10px;
+  height: var(--sm-app-row-height);
+  padding: 0 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  /* slides a row to its new place when the ranking changes (see view.js) */
+  transition: transform 0.35s ease;
+}
+
+.app-row.entering { animation: sm-row-in 0.3s ease; }
+
+@keyframes sm-row-in { from { opacity: 0; } }
+
+.app-row:last-child { border-bottom: 0; }
+.app-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--text-muted); }
+.app-icon img { width: 24px; height: 24px; }
+.app-icon svg { width: 16px; height: 16px; }
+.app-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+.bar > div { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.mini-ring { display: none; }
+.app-val { text-align: right; }
+.app-spark { width: 56px; height: 20px; }
+
+/* narrow card: the bar turns into a small ring */
+@container (max-width: 380px) {
+  .app-row { grid-template-columns: 24px minmax(0, 1fr) 22px 52px 48px; }
+  .bar { display: none; }
+  .mini-ring { display: block; }
+}
+
+/* temperature */
+.sm-gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sm-gauges.single { grid-template-columns: 1fr; }
+.sm-unavailable { display: none; text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
+.sm-unavailable-icon { display: grid; place-items: center; margin-bottom: 8px; }
+.sm-unavailable-reason { font-size: 11px; margin-top: 4px; }
+.sm-temperature.unavailable { opacity: 0.6; }
+.sm-temperature.unavailable .sm-gauges,
+.sm-temperature.unavailable .spark,
+.sm-temperature.unavailable .legend { display: none; }
+.sm-temperature.unavailable .sm-unavailable { display: block; }
+
+/* storage */
+.sm-storage-note { margin-left: auto; text-transform: none; letter-spacing: 0; }
+.sm-drives { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.drive { display: flex; align-items: center; gap: 12px; }
+.drive .ring-wrap .ring-label span { font-weight: 600; }
+.drive .ring-label .big { font-size: 14px; }
+.drive.main .ring-label .big { font-size: 24px; }
+.drive.secondary .ring-label .big { font-size: 11px; }
+/* room for the longest usual text, so a number gaining a digit does not
+   change the drive's width and rewrap the row of drives */
+.drive-text { min-width: 20ch; }
+.drive.main .drive-text { min-width: 32ch; }
+.drive.main .d-name { font-size: 16px; font-weight: 650; }
+.d-name { font-size: 13px; font-weight: 600; }
+.d-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; white-space: nowrap; }
+.d-meta b { color: var(--text-primary); }
+.d-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-top: 4px;
+}
+.d-tag svg { width: 11px; height: 11px; }
+.drive.secondary { opacity: 0.75; }
+.drive.secondary .d-name { color: var(--text-secondary); font-weight: 500; }
+.drive.not-responding { opacity: 0.5; }
+.drives-divider { width: 1px; align-self: stretch; background: var(--border); }

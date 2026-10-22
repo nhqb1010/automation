@@ -1,0 +1,10 @@
+extend = "~/.config/ruff/ruff.toml"
+
+# tests use plain assert and literal expected values by design
+[lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004"]
+# fixed macOS tools only (sysctl, hdiutil), never user input
+"app/tools/system_monitor/cpu_memory.py" = ["S603"]
+"app/tools/system_monitor/storage.py" = ["S603"]
+# Apple's method names are longer than the line limit
+"app/tools/system_monitor/app_icons.py" = ["E501"]
