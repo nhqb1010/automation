@@ -11,6 +11,7 @@ dependencies = [
 
 [tool.uv]
 python-downloads = "never"
+required-version = ">=0.13.4"
 
 [dependency-groups]
 dev = [
@@ -21,3 +22,8 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "-ra"
+
+# LEARN: Pylance (VS Code) reads this. "off" keeps autocomplete and hover docs
+# but skips type checking; type checkers are not part of this project yet.
+[tool.pyright]
+typeCheckingMode = "off"

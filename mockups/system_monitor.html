@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bao Internal Apps — Mockup</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #121211;
+  --sidebar: #171716;
+  --surface-1: #1a1a19;
+  --surface-2: #222220;
+  --border: #2c2c2a;
+  --track: #2f2f2c;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8a8980;
+  --accent: #3987e5;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+  --p-core: #3987e5;
+  --e-core: #9085e9;
+  --radius: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-primary); height: 100vh; overflow: hidden; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* shell */
+.app { display: grid; grid-template-columns: 200px 1fr; height: 100vh; transition: grid-template-columns .2s; }
+.app.collapsed { grid-template-columns: 60px 1fr; }
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 14px 10px; gap: 4px; }
+.brand { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 14px; }
+.brand span { font-weight: 600; font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; }
+.icon-btn { background: none; border: 0; color: var(--text-muted); cursor: pointer; padding: 6px; border-radius: 8px; display: grid; place-items: center; }
+.icon-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; color: var(--text-secondary); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.nav-item.active { background: var(--surface-2); color: var(--text-primary); }
+.nav-item svg { flex: none; }
+.nav-spacer { flex: 1; }
+.app.collapsed .label, .app.collapsed .brand span { display: none; }
+.app.collapsed .brand { justify-content: center; }
+.app.collapsed .nav-item { justify-content: center; }
+.kbd { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+.app.collapsed .kbd { display: none; }
+
+.content { overflow-y: auto; padding: 22px 24px 40px; container-type: inline-size; }
+.page-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+.page-head h1 { font-size: 20px; margin: 0; font-weight: 650; }
+.page-head .meta { font-size: 12px; color: var(--text-muted); }
+.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--good); margin-right: 6px; animation: pulse 2s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+
+/* grid */
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card.storage { grid-column: 1 / -1; }
+@container (max-width: 960px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 620px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; container-type: inline-size; min-width: 0; }
+.card-title { display: flex; align-items: center; gap: 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 14px; }
+.hero { display: flex; align-items: center; gap: 16px; }
+.hero-side { flex: 1; min-width: 0; }
+.stat-line { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.stat-line b { color: var(--text-primary); font-weight: 600; }
+
+/* ring */
+.ring-wrap { position: relative; flex: none; }
+.ring-wrap .ring-label { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.ring-label .big { font-size: 24px; font-weight: 650; }
+.ring-label .small { font-size: 10px; color: var(--text-muted); display: block; margin-top: -2px; }
+svg .track { stroke: var(--track); }
+svg .arc { transition: stroke-dashoffset .6s ease, stroke .4s; stroke-linecap: round; }
+
+/* sparkline */
+.spark { width: 100%; height: 44px; display: block; margin-top: 8px; }
+.spark path.line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark path.area { opacity: .12; }
+
+/* cores */
+.cores { display: flex; gap: 6px; align-items: flex-end; height: 70px; margin-top: 14px; }
+.core { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.core .col { flex: 1; width: 100%; max-width: 22px; background: var(--track); border-radius: 4px; position: relative; overflow: hidden; }
+.core .fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px 4px 0 0; transition: height .6s ease; }
+.core .tag { font-size: 10px; color: var(--text-muted); }
+.legend { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+
+/* top apps */
+.top-toggle { margin-top: 14px; width: 100%; display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 9px; padding: 8px 10px; cursor: pointer; font-size: 12px; }
+.top-toggle svg { transition: transform .2s; }
+.top-toggle.open svg { transform: rotate(90deg); }
+.top-list { display: none; margin-top: 8px; }
+.top-list.open { display: block; }
+.app-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 90px 44px 56px; align-items: center; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.app-row:last-child { border-bottom: 0; }
+.app-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
+.app-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+.bar > div { height: 100%; border-radius: 3px; transition: width .6s ease; }
+.mini-ring { display: none; }
+.app-val { text-align: right; color: var(--text-primary); }
+.app-spark { width: 56px; height: 20px; }
+@container (max-width: 380px) {
+  .app-row { grid-template-columns: 24px minmax(0, 1fr) 22px 44px 48px; }
+  .bar { display: none; }
+  .mini-ring { display: block; }
+}
+
+/* temperature */
+.gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gauge { text-align: center; }
+.gauge .g-val { font-size: 22px; font-weight: 650; margin-top: -34px; }
+.gauge .g-sub { font-size: 11px; color: var(--text-muted); }
+.gauge .g-name { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* storage */
+.drives { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.drive { display: flex; align-items: center; gap: 12px; }
+.drive.main .d-name { font-size: 16px; font-weight: 650; }
+.d-name { font-size: 13px; font-weight: 600; }
+.d-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+.d-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; margin-top: 4px; }
+.drive.secondary { opacity: .75; }
+.drive.secondary .d-name { color: var(--text-secondary); font-weight: 500; }
+.drive.unresponsive { opacity: .5; }
+.divider { width: 1px; align-self: stretch; background: var(--border); }
+
+.mock-note { position: fixed; bottom: 12px; right: 16px; font-size: 11px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); padding: 6px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span>Bao Internal Apps</span>
+      <button class="icon-btn" id="collapseBtn" title="Collapse sidebar (⌘\)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+      </button>
+    </div>
+    <div class="nav-item active" title="System Monitor">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span class="label">System Monitor</span><span class="kbd">⌘1</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="label">Settings</span><span class="kbd">⌘,</span>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="page-head">
+      <h1>System Monitor</h1>
+      <div class="meta"><span class="live-dot"></span>Live · every 2s</div>
+    </div>
+
+    <div class="grid">
+      <!-- CPU -->
+      <section class="card">
+        <div class="card-title">CPU</div>
+        <div class="hero">
+          <div class="ring-wrap" id="cpuRing"></div>
+          <div class="hero-side">
+            <div class="stat-line">Load avg <b class="num" id="loadAvg">2.41 · 2.10 · 1.95</b></div>
+            <div class="stat-line">M1 Pro · <b>6P + 2E</b> cores</div>
+            <svg class="spark" id="cpuSpark" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+        <div class="cores" id="cores"></div>
+        <div class="legend"><span><i style="background:var(--e-core)"></i>Efficiency</span><span><i style="background:var(--p-core)"></i>Performance</span></div>
+        <button class="top-toggle" data-target="cpuTop">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          Top apps
+        </button>
+        <div class="top-list" id="cpuTop"></div>
+      </section>
+
+      <!-- RAM -->
+      <section class="card">
+        <div class="card-title">Memory</div>
+        <div class="hero">
+          <div class="ring-wrap" id="ramRing"></div>
+          <div class="hero-side">
+            <div class="stat-line"><b class="num" id="ramUsed">10.1</b> of <b>16 GB</b> used</div>
+            <div class="stat-line">Swap <b class="num">1.2 GB</b></div>
+            <svg class="spark" id="ramSpark" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+        <button class="top-toggle" data-target="ramTop">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          Top apps
+        </button>
+        <div class="top-list" id="ramTop"></div>
+      </section>
+
+      <!-- Temperature -->
+      <section class="card">
+        <div class="card-title">Temperature</div>
+        <div class="gauges">
+          <div class="gauge" id="cpuGauge"></div>
+          <div class="gauge" id="gpuGauge"></div>
+        </div>
+        <svg class="spark" id="tempSpark" preserveAspectRatio="none"></svg>
+        <div class="legend"><span><i style="background:var(--text-primary)"></i>CPU hottest</span><span style="opacity:.6">30–100°C scale</span></div>
+      </section>
+
+      <!-- Storage -->
+      <section class="card storage">
+        <div class="card-title">Storage <span style="margin-left:auto;text-transform:none;letter-spacing:0">updates every 30s</span></div>
+        <div class="drives" id="drives"></div>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="mock-note">Mockup · fake data · resize the window to see reflow</div>
+
+<script>
+const statusColor = (v, warn, crit) => v >= crit ? "var(--critical)" : v >= warn ? "var(--warning)" : "var(--good)";
+const NS = "http://www.w3.org/2000/svg";
+
+function ringSvg(size, stroke, pct, color, track = "var(--track)", dashed = false) {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${track}" stroke-width="${stroke}" ${dashed ? 'stroke-dasharray="3 3"' : ""}/>
+    <circle class="arc" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct / 100)}"/></svg>`;
+}
+
+function setRing(el, size, stroke, pct, color, big, small) {
+  el.innerHTML = ringSvg(size, stroke, pct, color) +
+    `<div class="ring-label"><div><span class="big num">${big}</span><span class="small">${small}</span></div></div>`;
+}
+
+function arcGauge(el, value, name, sub) {
+  const min = 30, max = 100, pct = Math.min(1, Math.max(0, (value - min) / (max - min)));
+  const r = 52, cx = 64, cy = 64, start = Math.PI * 0.8, sweep = Math.PI * 1.4;
+  const pt = a => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  const arc = (a0, a1) => { const [x0, y0] = pt(a0), [x1, y1] = pt(a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1}`; };
+  const color = statusColor(value, 70, 90);
+  el.innerHTML = `<svg width="128" height="110" viewBox="0 0 128 110">
+      <path d="${arc(start, start + sweep)}" fill="none" stroke="var(--track)" stroke-width="10" stroke-linecap="round"/>
+      <path d="${arc(start, start + sweep * Math.max(pct, 0.001))}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" style="transition:all .6s"/>
+    </svg>
+    <div class="g-val num">${value.toFixed(0)}°C</div>
+    <div class="g-sub num">${sub}</div>
+    <div class="g-name">${name}</div>`;
+}
+
+function sparkline(svg, data, min, max, color) {
+  const w = svg.clientWidth || 200, h = svg.clientHeight || 44;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const n = data.length, x = i => (i / (n - 1)) * w, y = v => h - 2 - ((v - min) / (max - min)) * (h - 4);
+  const d = data.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  svg.innerHTML = `<path class="area" d="${d} L${w} ${h} L0 ${h} Z" fill="${color}"/><path class="line" d="${d}" stroke="${color}"/>`;
+}
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const walk = (v, step, lo, hi) => Math.min(hi, Math.max(lo, v + rand(-step, step)));
+const hist = (n, start, step, lo, hi) => { const a = [start]; for (let i = 1; i < n; i++) a.push(walk(a[i-1], step, lo, hi)); return a; };
+
+const state = {
+  cpu: hist(30, 22, 6, 4, 70), ram: hist(30, 63, 1, 55, 72), temp: hist(30, 52, 2, 40, 75),
+  cores: [18, 25, 40, 12, 8, 33, 5, 21],
+  cpuApps: [
+    { name: "Google Chrome", c: "#4285f4", v: 38 }, { name: "Visual Studio Code", c: "#1f8ad2", v: 12 },
+    { name: "Slack", c: "#7c3a87", v: 7 }, { name: "python3.14", c: "#55534e", v: 5 }, { name: "Spotify", c: "#1db954", v: 3 },
+  ],
+  ramApps: [
+    { name: "Google Chrome", c: "#4285f4", v: 3.1 }, { name: "Slack", c: "#7c3a87", v: 1.2 },
+    { name: "Visual Studio Code", c: "#1f8ad2", v: 0.9 }, { name: "Docker Desktop", c: "#2496ed", v: 0.8 }, { name: "Mail", c: "#3a8ef6", v: 0.4 },
+  ],
+};
+[...state.cpuApps, ...state.ramApps].forEach(a => a.h = hist(30, a.v, a.v * 0.2, 0, a.v * 2));
+
+function renderApps(listEl, apps, unit, total) {
+  listEl.innerHTML = apps.map(a => {
+    const pct = unit === "%" ? a.v : (a.v / total) * 100;
+    const color = statusColor(pct, 60, 85);
+    return `<div class="app-row">
+      <div class="app-icon" style="background:${a.c}">${a.name[0]}</div>
+      <div class="app-name">${a.name}</div>
+      <div><div class="bar"><div style="width:${Math.min(100, unit === "%" ? pct : pct * 3)}%;background:${color}"></div></div>
+           <div class="mini-ring">${ringSvg(22, 4, Math.min(100, unit === "%" ? pct : pct * 3), color)}</div></div>
+      <div class="app-val num">${unit === "%" ? a.v.toFixed(0) + "%" : a.v.toFixed(1) + " GB"}</div>
+      <svg class="app-spark" preserveAspectRatio="none" data-app="${a.name}"></svg>
+    </div>`;
+  }).join("");
+  listEl.querySelectorAll(".app-spark").forEach((svg, i) => sparkline(svg, apps[i].h, 0, Math.max(...apps[i].h) * 1.2 || 1, "var(--text-secondary)"));
+}
+
+function renderCores() {
+  const el = document.getElementById("cores");
+  el.innerHTML = state.cores.map((v, i) => {
+    const isE = i < 2;
+    return `<div class="core" title="Core ${i} (${isE ? "Efficiency" : "Performance"}) ${v.toFixed(0)}%">
+      <div class="col"><div class="fill" style="height:${v}%;background:${isE ? "var(--e-core)" : "var(--p-core)"}"></div></div>
+      <div class="tag">${isE ? "E" : "P"}</div></div>`;
+  }).join("");
+}
+
+function renderDrives() {
+  const drives = [
+    { name: "Macintosh HD", used: 295, total: 494, kind: "main" },
+    { name: "T7 Shield", used: 220, total: 1000, kind: "external" },
+    { name: "Bao NAS", used: 1800, total: 4000, kind: "network" },
+    { name: "Docker Installer", used: 0.6, total: 0.6, kind: "image" },
+  ];
+  const tag = { external: "External", network: "Network", image: "Disk image" };
+  document.getElementById("drives").innerHTML = drives.map((d, i) => {
+    const pct = (d.used / d.total) * 100, free = d.total - d.used;
+    const size = d.kind === "main" ? 120 : d.kind === "external" ? 76 : 52;
+    const stroke = d.kind === "main" ? 14 : d.kind === "external" ? 10 : 7;
+    const secondary = d.kind === "network" || d.kind === "image";
+    const color = secondary ? "var(--text-muted)" : statusColor(pct, 75, 90);
+    const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + " TB" : n < 1 ? (n * 1000).toFixed(0) + " MB" : n.toFixed(0) + " GB";
+    const ring = `<div class="ring-wrap">${ringSvg(size, stroke, pct, color, "var(--track)", secondary)}
+        <div class="ring-label"><span class="${d.kind === "main" ? "big" : ""} num" style="${d.kind === "main" ? "" : "font-size:" + (secondary ? 11 : 14) + "px;font-weight:600"}">${pct.toFixed(0)}%</span></div></div>`;
+    return (i === 1 ? '<div class="divider"></div>' : "") + `<div class="drive ${d.kind === "main" ? "main" : ""} ${secondary ? "secondary" : ""}">
+      ${ring}<div><div class="d-name">${d.name}</div>
+      <div class="d-meta num">${d.kind === "main" ? `<b style="color:var(--text-primary)">${fmt(free)}</b> free · ${fmt(d.used)} of ${fmt(d.total)}` : `${fmt(free)} free of ${fmt(d.total)}`}</div>
+      ${tag[d.kind] ? `<span class="d-tag">${tag[d.kind]}</span>` : ""}</div></div>`;
+  }).join("");
+}
+
+function tick() {
+  const cpuNow = walk(state.cpu.at(-1), 7, 4, 80);
+  state.cpu.push(cpuNow); state.cpu.shift();
+  state.ram.push(walk(state.ram.at(-1), 0.8, 55, 75)); state.ram.shift();
+  state.temp.push(walk(state.temp.at(-1), 2.5, 40, 92)); state.temp.shift();
+  state.cores = state.cores.map((v, i) => walk(v, 12, 2, i < 2 ? 60 : 95));
+  [...state.cpuApps, ...state.ramApps].forEach(a => { a.v = walk(a.v, a.v * 0.12, a.v * 0.5, a.v * 1.5); a.h.push(a.v); a.h.shift(); });
+  state.cpuApps.sort((a, b) => b.v - a.v); state.ramApps.sort((a, b) => b.v - a.v);
+
+  const ram = state.ram.at(-1);
+  setRing(document.getElementById("cpuRing"), 108, 12, cpuNow, statusColor(cpuNow, 60, 85), cpuNow.toFixed(0) + "%", "in use");
+  setRing(document.getElementById("ramRing"), 108, 12, ram, statusColor(ram, 60, 85), ram.toFixed(0) + "%", "used");
+  document.getElementById("ramUsed").textContent = (ram / 100 * 16).toFixed(1);
+  sparkline(document.getElementById("cpuSpark"), state.cpu, 0, 100, "var(--accent)");
+  sparkline(document.getElementById("ramSpark"), state.ram, 0, 100, "var(--accent)");
+  sparkline(document.getElementById("tempSpark"), state.temp, 30, 100, "var(--text-primary)");
+  const t = state.temp.at(-1);
+  arcGauge(document.getElementById("cpuGauge"), t, "CPU", `avg ${(t - 6).toFixed(0)}°C`);
+  arcGauge(document.getElementById("gpuGauge"), t - 8, "GPU", "hottest");
+  renderCores();
+  renderApps(document.getElementById("cpuTop"), state.cpuApps, "%");
+  renderApps(document.getElementById("ramTop"), state.ramApps, "GB", 16);
+}
+
+document.querySelectorAll(".top-toggle").forEach(btn => btn.addEventListener("click", () => {
+  btn.classList.toggle("open");
+  document.getElementById(btn.dataset.target).classList.toggle("open");
+  tick();
+}));
+document.getElementById("collapseBtn").addEventListener("click", () => document.getElementById("app").classList.toggle("collapsed"));
+window.addEventListener("resize", tick);
+
+renderDrives();
+tick();
+setInterval(tick, 2000);
+</script>
+</body>
+</html>
