@@ -1,6 +1,6 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks temperature.py with fake sensors
-#   read next → tests/test_system_monitor_top_apps.py
+#   read next → tests/test_system_monitor_power.py
 import pytest
 
 from app.tools.system_monitor.temperature import (

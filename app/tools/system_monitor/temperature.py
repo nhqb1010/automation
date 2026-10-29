@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   page refresh ▶ bridge ▶ System Monitor tool ▶ THIS FILE reads chip sensors
 #   ▶ TemperatureStats ▶ JSON ▶ Temperature card (gauges + sparkline)
-#   read next → app/tools/system_monitor/top_apps.py
+#   read next → app/tools/system_monitor/power.py
 """
 CPU and GPU temperature on Apple Silicon.
 

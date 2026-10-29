@@ -152,6 +152,43 @@
 .sm-temperature.unavailable .legend { display: none; }
 .sm-temperature.unavailable .sm-unavailable { display: block; }
 
+/* power
+   3-column window → the card spans the full width (a strip under the others)
+   2 / 1 columns   → a normal card next to Temperature (rule further down)
+   flow boxes wrap onto a 2nd line when the card is narrow */
+.sm-power { grid-column: 1 / -1; }
+.sm-power-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.sm-power-main { flex: 1; min-width: 240px; }
+.sm-power-state { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.sm-power-state b { font-weight: 600; }
+.sm-power-time { color: var(--text-muted); font-size: 12px; }
+.sm-power-bolt { display: none; color: var(--good); }
+.sm-power-bolt svg { width: 14px; height: 14px; }
+.sm-power.charging .sm-power-bolt { display: grid; }
+.sm-power-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.sm-flow-box {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 6px 10px;
+  min-width: 78px;
+}
+.sm-flow-box span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.sm-flow-box b { font-size: 15px; font-weight: 650; }
+.sm-flow-arrow { color: var(--text-muted); font-size: 10px; }
+/* view.js hides boxes / arrows that don't apply (unplugged → no charger) */
+.sm-flow-box[hidden], .sm-flow-arrow[hidden] { display: none; }
+.sm-power-health { min-width: 140px; }
+.sm-power.unavailable { opacity: 0.6; }
+.sm-power.unavailable .sm-power-body { display: none; }
+.sm-power.unavailable .sm-unavailable { display: block; }
+
+@container (max-width: 960px) {
+  .sm-power { grid-column: auto; }
+}
+
 /* storage
    flex-wrap: wrap → drives flow onto the next line when the row is full
    .main = the startup disk (bigger), .secondary = muted extra volumes

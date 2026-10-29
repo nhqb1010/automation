@@ -4,7 +4,7 @@
 #   ▶ reader result ▶ JSON ▶ page
 #   read next → app/tools/system_monitor/models.py
 """
-System Monitor: CPU, RAM, temperature, top apps and storage.
+System Monitor: CPU, RAM, temperature, power, top apps and storage.
 
 LEARN: __init__.py = the file that runs when you import the folder itself
   "from app.tools.system_monitor import SystemMonitorTool" reads THIS file
@@ -12,7 +12,7 @@ LEARN: __init__.py = the file that runs when you import the folder itself
 LEARN: this file is the tool's "front desk"; the readers do the real work
 
   page asks          this file          does the work
-  get_live_stats ──▶ CpuMemoryReader + TemperatureMonitor
+  get_live_stats ──▶ CpuMemoryReader + TemperatureMonitor + PowerReader
   get_top_apps   ──▶ TopAppsReader
   get_storage    ──▶ StorageReader
 """
@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from app.tools.base import Tool, ToolInfo
 from app.tools.system_monitor.cpu_memory import CpuMemoryReader
 from app.tools.system_monitor.models import LiveStats, StorageStats, TopApps
+from app.tools.system_monitor.power import PowerReader
 from app.tools.system_monitor.storage import StorageReader
 from app.tools.system_monitor.temperature import TemperatureMonitor
 from app.tools.system_monitor.top_apps import TopAppsReader
@@ -83,7 +84,7 @@ class SystemMonitorTool(Tool):
         id="system_monitor",
         name="System Monitor",
         icon="activity",
-        description="CPU, RAM, temperature, top apps and storage.",
+        description="CPU, RAM, temperature, power, top apps and storage.",
     )
     settings_model = SystemMonitorSettings
     # the ONLY methods the page may call; anything else is refused
@@ -96,15 +97,18 @@ class SystemMonitorTool(Tool):
         # each reader starts once here and lives as long as the app
         self._cpu_memory = CpuMemoryReader()
         self._temperature = TemperatureMonitor()
+        self._power = PowerReader()
         self._top_apps = TopAppsReader()
         self._storage = StorageReader()
 
     def get_live_stats(self) -> LiveStats:
-        # called every refresh (default every 2 s) → CPU + Memory + Temperature
+        # called every refresh (default every 2 s)
+        #   → CPU + Memory + Temperature + Power
         return LiveStats(
             cpu=self._cpu_memory.read_cpu_stats(),
             memory=self._cpu_memory.read_memory_stats(),
             temperature=self._temperature.read_temperature_stats(),
+            power=self._power.read_power_stats(),
         )
 
     def get_top_apps(self, limit: int) -> TopApps:

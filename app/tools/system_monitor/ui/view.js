@@ -8,7 +8,7 @@
 //
 // LEARN: the refresh loop.
 //
-//   every N s (Settings) ──▶ call("get_live_stats") ──▶ rings, cores, gauges
+//   every N s (Settings) ──▶ call("get_live_stats") ──▶ rings, cores, gauges, power
 //        └─ if a top apps list is open ──▶ call("get_top_apps") ──▶ rows
 //   every 30 s          ──▶ call("get_storage")    ──▶ donuts
 //
@@ -31,6 +31,11 @@
   const TEMP_SCALE = { min: 30, max: 100 };
   const DISK_WARN = 75;
   const DISK_CRITICAL = 90;
+  // battery: low is bad → red at 10 % or less, yellow at 20 % or less
+  const BATTERY_CRITICAL = 10;
+  const BATTERY_WARN = 20;
+  // fixed scale for the Mac power sparkline (watts)
+  const POWER_SCALE = { min: 0, max: 100 };
   // matches the 60 s of recent values kept in Python (recent_values.py)
   const HISTORY_SECONDS = 60;
   // drive kind → [icon name, tag text] shown under the drive
@@ -212,6 +217,82 @@
       // { ...TEMP_SCALE, slots } = { min: 30, max: 100, slots }
       { ...TEMP_SCALE, slots: historySlots() },
     );
+  }
+
+  // ---------- power ----------
+
+  // 75 → "1 h 15 min", 40 → "40 min"
+  function formatMinutes(minutes) {
+    // Math.floor → round down; % → remainder ≈ Python // and %
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return hours ? `${hours} h ${rest} min` : `${rest} min`;
+  }
+
+  // 12.3 → "12.3 W", null → "—"; signed adds + for charging ("+48.9 W")
+  function formatWatts(watts, signed = false) {
+    if (watts == null) return "—";
+    const sign = signed && watts > 0 ? "+" : "";
+    return `${sign}${watts.toFixed(1)} W`;
+  }
+
+  // the status line: "Charging · 58 min to full", "On battery · 3 h left", …
+  function describePowerState(power) {
+    if (power.fully_charged || (power.plugged_in && !power.charging && power.percent >= 99)) {
+      return ["Charged", ""];
+    }
+    const time = power.minutes_remaining == null ? "estimating…" : formatMinutes(power.minutes_remaining);
+    if (power.charging) return ["Charging", `${time} to full`];
+    if (power.plugged_in) return ["Plugged in, not charging", ""];
+    return ["On battery", `${time} left`];
+  }
+
+  // LEARN: one box of the charger ▶ Mac ▶ battery row
+  //   shown false → the box (and the arrow before it) is hidden
+  function setFlowBox(name, text, shown) {
+    const box = $(`[data-flow="${name}"]`);
+    box.hidden = !shown;
+    box.querySelector("b").textContent = text;
+    // previousElementSibling = the element right before it (its ▶ arrow)
+    const arrow = box.previousElementSibling;
+    if (arrow && arrow.classList.contains("sm-flow-arrow")) arrow.hidden = !shown;
+  }
+
+  // called by → refreshLiveStats; input → PowerStats (models.py)
+  function renderPowerCard(power) {
+    const card = $(".sm-power");
+    card.classList.toggle("unavailable", !power.available);
+    markCardLoaded(".sm-power");
+    if (!power.available) {
+      card.querySelector(".sm-unavailable-reason").textContent = power.reason || "";
+      return;
+    }
+    card.classList.toggle("charging", power.charging);
+    // plugged in → green; on battery → colour by how low it is
+    const color = power.plugged_in
+      ? "var(--good)"
+      : power.percent <= BATTERY_CRITICAL
+        ? "var(--critical)"
+        : power.percent <= BATTERY_WARN
+          ? "var(--warning)"
+          : "var(--accent)";
+    const [status, time] = describePowerState(power);
+    parts.batteryRing.update(power.percent, color, `${power.percent}%`, power.plugged_in ? "plugged in" : "battery");
+    $(".sm-power-status").textContent = status;
+    $(".sm-power-time").textContent = time;
+    setFlowBox("charger", power.charger_watts == null ? "—" : `${power.charger_watts} W`, power.plugged_in);
+    setFlowBox("in", formatWatts(power.power_in_watts), power.plugged_in);
+    setFlowBox("mac", formatWatts(power.mac_watts), true);
+    setFlowBox("battery", formatWatts(power.battery_watts, true), true);
+    C.drawSparkline($(".sm-power-spark"), power.history, {
+      ...POWER_SCALE,
+      color: "var(--accent)",
+      slots: historySlots(),
+    });
+    $(".sm-battery-health").textContent = power.health_percent == null ? "—" : `${Math.round(power.health_percent)}%`;
+    $(".sm-battery-cycles").textContent = power.cycle_count ?? "—";
+    $(".sm-battery-temp").textContent =
+      power.temperature_celsius == null ? "—" : `${Math.round(power.temperature_celsius)}°C`;
   }
 
   // ---------- top apps ----------
@@ -449,6 +530,7 @@
         renderCpuCard(stats.cpu);
         renderMemoryCard(stats.memory);
         renderTemperatureCard(stats.temperature);
+        renderPowerCard(stats.power);
       });
       if (prefs.cpu_top_apps_open || prefs.memory_top_apps_open) {
         const top = await ctx.call("get_top_apps", { limit: prefs.top_apps_count });
@@ -519,6 +601,7 @@
       memoryRing: C.createRing($(".sm-memory-ring"), { size: 108, stroke: 12 }),
       cpuGauge: C.createArcGauge($(".sm-cpu-gauge"), TEMP_SCALE),
       gpuGauge: C.createArcGauge($(".sm-gpu-gauge"), TEMP_SCALE),
+      batteryRing: C.createRing($(".sm-battery-ring"), { size: 96, stroke: 11 }),
     };
     prefs = await ctx.getPreferences();
     // the user may have switched away (unmount) while preferences were loading

@@ -25,6 +25,7 @@ LEARN: fake (industry term: "test double")
 """
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import BaseModel
@@ -161,6 +162,27 @@ def fake_hid_readings() -> list[SensorReading]:
 
 # a messy real-world list: system volumes, a duplicate T7, Time Machine
 # snapshots, hidden volumes → storage.py must keep only real drives
+# a MacBook charging from a 65 W charger (values copied from a real ioreg read)
+@pytest.fixture
+def fake_battery_registry() -> dict[str, Any]:
+    return {
+        "ExternalConnected": True,
+        "IsCharging": True,
+        "FullyCharged": False,
+        "CurrentCapacity": 69,
+        "TimeRemaining": 58,
+        "Voltage": 12506,
+        "Amperage": 3910,
+        "InstantAmperage": 3910,
+        "DesignCapacity": 6075,
+        "AppleRawMaxCapacity": 5329,
+        "CycleCount": 149,
+        "Temperature": 3064,
+        "AdapterDetails": {"Watts": 65, "Description": "pd charger"},
+        "PowerTelemetryData": {"SystemPowerIn": 57487},
+    }
+
+
 @pytest.fixture
 def fake_mounted_volumes() -> list[MountedVolume]:
     return [

@@ -7,7 +7,7 @@ start here → [Makefile](Makefile) (the commands), then follow each file's "rea
 A small macOS desktop app that hosts internal tools behind a sidebar.
 Tools so far:
 
-- **System Monitor**: CPU, RAM, temperature, top apps and storage.
+- **System Monitor**: CPU, RAM, temperature, power, top apps and storage.
 - **Logs**: the app's own log file, live, with level filters and search.
 
 ## Run the app
@@ -72,7 +72,7 @@ Following it from the Makefile walks the whole project:
 Makefile ▶ app/__main__.py ▶ main ▶ paths ▶ config ▶ logging_setup
   ▶ single_instance ▶ state ▶ tools/__init__ ▶ tools/base
   ▶ system_monitor/__init__ ▶ models ▶ cpu_memory ▶ recent_values
-  ▶ temperature ▶ top_apps ▶ app_icons ▶ storage
+  ▶ temperature ▶ power ▶ top_apps ▶ app_icons ▶ storage
   ▶ log_viewer/__init__ ▶ models ▶ reader
   ▶ app/preferences ▶ app/bridge
   ▶ ui/index.html ▶ style.css ▶ icons.js ▶ charts.js ▶ shell.js ▶ settings.js

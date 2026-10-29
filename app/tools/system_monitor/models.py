@@ -16,7 +16,8 @@ LEARN: the field names here = the names the page's JavaScript uses
 
   LiveStats ─┬─ cpu: CpuStats ── cores: [CoreUsage, …]
              ├─ memory: MemoryStats
-             └─ temperature: TemperatureStats
+             ├─ temperature: TemperatureStats
+             └─ power: PowerStats
   TopApps ── by_cpu / by_memory: [AppUsage, …]
   StorageStats ── drives: [DriveUsage, …]
 """
@@ -85,12 +86,44 @@ class TemperatureStats(BaseModel):
     gpu_history: list[float] = []
 
 
+class PowerStats(BaseModel):
+    """
+    LEARN: the Power card (battery + charger)
+
+    available False → greyed card + reason (e.g. a Mac with no battery)
+    watts: + = into the battery (charging), − = out of it (on battery)
+      battery_watts  = power flowing into / out of the battery
+      power_in_watts = power coming in from the charger (None unplugged)
+      mac_watts      = what the Mac itself is using right now
+    minutes_remaining → to full (charging) or to empty (on battery);
+      None while macOS is still estimating
+    history = recent mac_watts → the card's sparkline
+    """
+
+    available: bool
+    reason: str | None = None
+    percent: int | None = None
+    plugged_in: bool = False
+    charging: bool = False
+    fully_charged: bool = False
+    minutes_remaining: int | None = None
+    charger_watts: int | None = None
+    power_in_watts: float | None = None
+    battery_watts: float | None = None
+    mac_watts: float | None = None
+    health_percent: float | None = None
+    cycle_count: int | None = None
+    temperature_celsius: float | None = None
+    history: list[float] = []
+
+
 class LiveStats(BaseModel):
     """LEARN: everything one live refresh sends, in one package."""
 
     cpu: CpuStats
     memory: MemoryStats
     temperature: TemperatureStats
+    power: PowerStats
 
 
 class AppUsage(BaseModel):
