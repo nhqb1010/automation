@@ -23,9 +23,13 @@ LEARN: Promise (JavaScript) = "the answer will come later"
 """
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
-from app.build_info import BuildInfo, format_build_label
+from app.app_usage import AppUsageMonitor
+from app.build_info import BuildInfo, format_build_label, format_short_build_label
+from app.logging_setup import ErrorCountingHandler
+from app.login_item import LoginItemManager
 from app.preferences import PreferencesService
 from app.state import StateStore
 from app.tools.base import Tool, UnknownToolActionError
@@ -33,6 +37,24 @@ from app.tools.base import Tool, UnknownToolActionError
 logger = logging.getLogger(__name__)
 # a separate logger named "ui" → page errors are easy to spot in app.log
 client_logger = logging.getLogger("ui")
+
+
+@dataclass(frozen=True)
+class AppServices:
+    """
+    LEARN: app-wide helpers the bridge hands to the Settings page and shell
+
+    made by → main.py; one bundle instead of a long list of arguments
+      build_info    → version line on Settings
+      app_usage     → "This app's own usage" card
+      login_item    → "Open at login" switch
+      error_counter → red badge on the Logs sidebar entry
+    """
+
+    build_info: BuildInfo
+    app_usage: AppUsageMonitor
+    login_item: LoginItemManager
+    error_counter: ErrorCountingHandler
 
 
 class AppBridge:
@@ -51,13 +73,13 @@ class AppBridge:
         tools: list[Tool],
         preferences: PreferencesService,
         store: StateStore,
-        build_info: BuildInfo,
+        services: AppServices,
     ) -> None:
         # tool id → tool, for quick lookup
         self._tools = {tool.info.id: tool for tool in tools}
         self._preferences = preferences
         self._store = store
-        self._build_info = build_info
+        self._services = services
 
     def list_tools(self) -> list[dict[str, str]]:
         """called by → shell.js at startup ▶ builds the sidebar."""
@@ -134,11 +156,35 @@ class AppBridge:
         ]
 
     def get_app_info(self) -> dict[str, Any]:
-        """called by → settings.js ▶ the version line under the settings."""
+        """called by → settings.js (footer) and shell.js (sidebar) ▶ version."""
+        build_info = self._services.build_info
         return {
-            "label": format_build_label(self._build_info),
-            "is_dev": self._build_info.is_dev,
+            "label": format_build_label(build_info),
+            "short_label": format_short_build_label(build_info),
+            "is_dev": build_info.is_dev,
         }
+
+    def get_app_usage(self) -> dict[str, Any]:
+        """called by → settings.js every 2 s ▶ the own-usage card."""
+        return self._services.app_usage.read_app_usage().model_dump(mode="json")
+
+    def get_open_at_login(self) -> dict[str, Any]:
+        """called by → settings.js ▶ the "Open at login" switch."""
+        status = self._services.login_item.read_login_item_status()
+        return status.model_dump(mode="json")
+
+    def set_open_at_login(self, enabled: bool) -> dict[str, Any]:
+        """called by → settings.js, a switch click ▶ macOS Login Items."""
+        status = self._services.login_item.set_open_at_login(bool(enabled))
+        return status.model_dump(mode="json")
+
+    def get_unseen_error_count(self) -> int:
+        """called by → shell.js every few seconds ▶ red badge on Logs."""
+        return self._services.error_counter.count_unseen_errors()
+
+    def mark_errors_seen(self) -> None:
+        """called by → shell.js when the Logs tool is on screen."""
+        self._services.error_counter.mark_all_errors_seen()
 
     def log_client_error(self, message: str, source: str, line: int) -> None:
         """

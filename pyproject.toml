@@ -20,6 +20,7 @@ dependencies = [
     "psutil>=7.2.2",
     "pydantic>=2.14.1",
     "pydantic-settings>=2.16.1",
+    "pyobjc-framework-servicemanagement>=12.2.2",
     "pywebview>=6.2.1",
 ]
 

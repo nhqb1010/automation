@@ -16,8 +16,8 @@ LEARN: the field names here = the names the page's JavaScript uses
 
   LiveStats ─┬─ cpu: CpuStats ── cores: [CoreUsage, …]
              ├─ memory: MemoryStats
-             ├─ temperature: TemperatureStats
-             └─ power: PowerStats
+             └─ temperature: TemperatureStats
+  PowerStats   (its own, slower timer: battery values change slowly)
   TopApps ── by_cpu / by_memory: [AppUsage, …]
   StorageStats ── drives: [DriveUsage, …]
   MacInfo ── model, chip, memory, macOS, ages (read once per visit)
@@ -132,7 +132,6 @@ class LiveStats(BaseModel):
     cpu: CpuStats
     memory: MemoryStats
     temperature: TemperatureStats
-    power: PowerStats
 
 
 class AppUsage(BaseModel):

@@ -5,26 +5,58 @@ import logging
 
 import pytest
 
-from app.bridge import AppBridge
+from app.app_usage import AppUsageMonitor
+from app.bridge import AppBridge, AppServices
 from app.build_info import BuildInfo
+from app.logging_setup import ErrorCountingHandler
+from app.login_item import LoginItemManager
 from app.preferences import PreferencesService
 from app.state import StateStore
 from app.tools.base import UnknownToolActionError
-from tests.conftest import DummyTool
+from tests.conftest import (
+    DummyTool,
+    FakeClock,
+    FakeLoginService,
+    FakeMeasuredProcess,
+)
 
 
 @pytest.fixture
-def bridge(state_store: StateStore, dummy_tool: DummyTool) -> AppBridge:
+def error_counter() -> ErrorCountingHandler:
+    return ErrorCountingHandler()
+
+
+@pytest.fixture
+def bridge(
+    state_store: StateStore,
+    dummy_tool: DummyTool,
+    error_counter: ErrorCountingHandler,
+    fake_clock: FakeClock,
+) -> AppBridge:
     tools = [dummy_tool]
+    process = FakeMeasuredProcess(cpu_percent=4.0, rss=1000)
     return AppBridge(
         tools=tools,
         preferences=PreferencesService(store=state_store, tools=tools),
         store=state_store,
-        build_info=BuildInfo(
-            version="1.2.3",
-            built_at="2026-10-29T22:40:00",
-            commit="abc1234",
-            is_dev=False,
+        services=AppServices(
+            build_info=BuildInfo(
+                version="1.2.3",
+                built_at="2026-10-29T22:40:00",
+                commit="abc1234",
+                is_dev=False,
+            ),
+            app_usage=AppUsageMonitor(
+                own_pid=1,
+                find_helper_pids=lambda pid: [],
+                open_process=lambda pid: process,
+                cpu_count=2,
+                clock=fake_clock,
+            ),
+            login_item=LoginItemManager(
+                is_installed=True, open_service=lambda: FakeLoginService(0)
+            ),
+            error_counter=error_counter,
         ),
     )
 
@@ -79,8 +111,38 @@ class TestAppBridgeAppInfo:
     def test_app_bridge_app_info_label(self, bridge: AppBridge) -> None:
         assert bridge.get_app_info() == {
             "label": "Version 1.2.3 · built 29 Oct 22:40 · abc1234",
+            "short_label": "v1.2.3",
             "is_dev": False,
         }
+
+
+class TestAppBridgeAppUsage:
+    def test_app_bridge_app_usage_reading(self, bridge: AppBridge) -> None:
+        usage = bridge.get_app_usage()
+
+        # 4 % of one core, shared across 2 cores
+        assert usage["cpu_percent"] == 2.0
+        assert usage["memory_bytes"] == 1000
+
+
+class TestAppBridgeOpenAtLogin:
+    def test_app_bridge_open_at_login_status(self, bridge: AppBridge) -> None:
+        assert bridge.get_open_at_login() == {"state": "off", "note": None}
+
+
+class TestAppBridgeErrorBadge:
+    def test_app_bridge_error_badge_counts_and_clears(
+        self, bridge: AppBridge, error_counter: ErrorCountingHandler
+    ) -> None:
+        error_counter.handle(
+            logging.LogRecord("x", logging.ERROR, __file__, 1, "boom", None, None)
+        )
+
+        before = bridge.get_unseen_error_count()
+        bridge.mark_errors_seen()
+
+        assert before == 1
+        assert bridge.get_unseen_error_count() == 0
 
 
 class TestAppBridgeLogClientError:

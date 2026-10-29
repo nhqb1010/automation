@@ -27,6 +27,7 @@ LEARN: fake (industry term: "test double")
 from pathlib import Path
 from typing import Any
 
+import psutil
 import pytest
 from pydantic import BaseModel
 
@@ -67,6 +68,67 @@ class FakeClock:
 
 # LEARN: a tiny pretend tool, so bridge / preferences tests don't need the
 #   real System Monitor (which reads the real Mac)
+class FakeMemoryReading:
+    """LEARN: stands in for psutil's memory_info() answer (only .rss is used)."""
+
+    def __init__(self, rss: int) -> None:
+        self.rss = rss
+
+
+class FakeMeasuredProcess:
+    """
+    LEARN: a pretend process for app_usage.py
+
+    reported_cpu → the CPU % it reports (per core, like psutil); a test
+      may change it between readings
+    gone=True → behaves like a process that has quit
+    """
+
+    def __init__(self, cpu_percent: float, rss: int, gone: bool = False) -> None:
+        self.reported_cpu = cpu_percent
+        self._rss = rss
+        self.gone = gone
+
+    def cpu_percent(self, interval: float | None = None) -> float:
+        if self.gone:
+            raise psutil.NoSuchProcess(pid=0)
+
+        return self.reported_cpu
+
+    def memory_info(self) -> FakeMemoryReading:
+        return FakeMemoryReading(rss=self._rss)
+
+
+class FakeLoginService:
+    """
+    LEARN: stands in for macOS's SMAppService in the login item tests
+
+    status_code → what status() reports; register / unregister change it
+    fail=True → registering fails, like macOS refusing
+    """
+
+    def __init__(self, status_code: int, fail: bool = False) -> None:
+        self.status_code = status_code
+        self.fail = fail
+        self.calls: list[str] = []
+
+    def status(self) -> int:
+        return self.status_code
+
+    def registerAndReturnError_(self, error: None) -> tuple[bool, str | None]:
+        self.calls.append("register")
+        if self.fail:
+            return False, "not allowed"
+
+        self.status_code = 1
+        return True, None
+
+    def unregisterAndReturnError_(self, error: None) -> tuple[bool, str | None]:
+        self.calls.append("unregister")
+        self.status_code = 0
+        return True, None
+
+
 class EchoResult(BaseModel):
     text: str
 

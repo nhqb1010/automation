@@ -8,9 +8,13 @@
 //
 // LEARN: the refresh loop.
 //
-//   every N s (Settings) ──▶ call("get_live_stats") ──▶ rings, cores, gauges, power
+//   every N s (Settings) ──▶ call("get_live_stats") ──▶ rings, cores, gauges
+//   every N s (Settings) ──▶ call("get_power")       ──▶ Power card (default 10 s)
 //        └─ if a top apps list is open ──▶ call("get_top_apps") ──▶ rows
-//   every 30 s          ──▶ call("get_storage")    ──▶ donuts
+//   every N s (Settings) ──▶ call("get_storage")     ──▶ donuts (default 30 s)
+//
+//   window not in front + "Slow down in the background" on
+//     ──▶ every timer waits at least 10 s (industry term: "throttling")
 //   once per visit      ──▶ call("get_mac_info")   ──▶ This Mac card
 //                           (its uptime line ticks on with every live refresh)
 //
@@ -23,9 +27,9 @@
   // short names for the shared helpers (charts.js, icons.js)
   const C = window.BaoCharts;
   const I = window.BaoIcons;
-  // MS = milliseconds; 30000 ms = 30 s
   // WARN / CRITICAL = where colours turn yellow / red
-  const STORAGE_REFRESH_MS = 30000;
+  // window not in front → no timer runs more often than this
+  const BACKGROUND_MIN_SECONDS = 10;
   const CPU_WARN = 60;
   const CPU_CRITICAL = 85;
   const TEMP_WARN = 70;
@@ -63,7 +67,11 @@
   let prefs = null;
   let parts = null;
   let liveTimer = null;
+  let powerTimer = null;
   let storageTimer = null;
+  // true while another app's window is in front of ours
+  // LEARN: document.hasFocus() → is our window the active one right now?
+  let inBackground = !document.hasFocus();
   let running = false;
   // true only once mount has fully finished (preferences loaded)
   let mounted = false;
@@ -75,6 +83,7 @@
   let refreshSession = 0;
   let liveInFlightSession = null;
   let storageInFlightSession = null;
+  let powerInFlightSession = null;
   // LEARN: rows and donuts are built once and then only updated, so values
   // animate instead of the whole list being redrawn (which made it jump).
   // Rebuilt on every mount, because the shell gives the tool fresh markup.
@@ -309,7 +318,7 @@
     C.drawSparkline($(".sm-power-spark"), power.history, {
       ...POWER_SCALE,
       color: "var(--accent)",
-      slots: historySlots(),
+      slots: powerHistorySlots(),
     });
     $(".sm-battery-health").textContent = power.health_percent == null ? "—" : `${Math.round(power.health_percent)}%`;
     $(".sm-battery-cycles").textContent = power.cycle_count ?? "—";
@@ -631,7 +640,6 @@
         renderCpuCard(stats.cpu);
         renderMemoryCard(stats.memory);
         renderTemperatureCard(stats.temperature);
-        renderPowerCard(stats.power);
         updateUptimeLine();
       });
       if (prefs.cpu_top_apps_open || prefs.memory_top_apps_open) {
@@ -648,6 +656,19 @@
       }
     } finally {
       if (liveInFlightSession === session) liveInFlightSession = null;
+    }
+  }
+
+  // one battery refresh (same pattern as refreshLiveStats)
+  async function refreshPower() {
+    const session = refreshSession;
+    if (!running || powerInFlightSession === session) return;
+    powerInFlightSession = session;
+    try {
+      const power = await ctx.call("get_power");
+      if (isRefreshSessionCurrent(session)) renderKeepingScrollPosition("power", () => renderPowerCard(power));
+    } finally {
+      if (powerInFlightSession === session) powerInFlightSession = null;
     }
   }
 
@@ -672,16 +693,59 @@
     running = true;
     refreshSession += 1;
     refreshLiveStats();
+    refreshPower();
     refreshStorage();
-    liveTimer = setInterval(refreshLiveStats, prefs.refresh_interval_seconds * 1000);
-    storageTimer = setInterval(refreshStorage, STORAGE_REFRESH_MS);
+    liveTimer = setInterval(refreshLiveStats, effectiveSeconds(prefs.refresh_interval_seconds) * 1000);
+    powerTimer = setInterval(refreshPower, effectiveSeconds(prefs.battery_refresh_seconds) * 1000);
+    storageTimer = setInterval(refreshStorage, effectiveSeconds(prefs.storage_refresh_seconds) * 1000);
+    updateRefreshLabel();
   }
 
   // called by → unmount, and shell.js pause (window hidden)
   function stopRefreshTimers() {
     running = false;
     clearInterval(liveTimer);
+    clearInterval(powerTimer);
     clearInterval(storageTimer);
+  }
+
+  // LEARN: the interval a timer really uses
+  //   in front, or slowing down switched off → the setting as chosen
+  //   in the background → at least 10 s (Math.max picks the larger)
+  function effectiveSeconds(seconds) {
+    const slowed = prefs.slow_down_in_background && inBackground;
+    return slowed ? Math.max(seconds, BACKGROUND_MIN_SECONDS) : seconds;
+  }
+
+  // the battery chart's point count follows the battery's own interval
+  function powerHistorySlots() {
+    return C.sparklineSlots(HISTORY_SECONDS, effectiveSeconds(prefs.battery_refresh_seconds));
+  }
+
+  // 30 → "30s", 60 → "1 min", 300 → "5 min"
+  function formatInterval(seconds) {
+    return seconds < 60 ? `${seconds}s` : `${seconds / 60} min`;
+  }
+
+  // LEARN: every "how often" text comes from the settings, never typed in
+  //   the HTML → a label can't drift from what the timer really does
+  //   "Live · every 2s", or "Live · every 10s (background)" while slowed
+  //   Storage card: "updates every 5 min"
+  function updateRefreshLabel() {
+    const seconds = effectiveSeconds(prefs.refresh_interval_seconds);
+    const slowed = seconds !== prefs.refresh_interval_seconds;
+    $(".sm-refresh-label").textContent = `Live · every ${formatInterval(seconds)}${slowed ? " (background)" : ""}`;
+    $(".sm-storage-note").textContent = `updates every ${formatInterval(effectiveSeconds(prefs.storage_refresh_seconds))}`;
+  }
+
+  // LEARN: the window moved to the back / came to the front
+  //   "blur" = our window stopped being the active one; "focus" = it's back
+  //   → restart the timers with the new intervals (only if they're running)
+  function onWindowFocusChange(event) {
+    inBackground = event.type === "blur";
+    if (!running) return;
+    stopRefreshTimers();
+    startRefreshTimers();
   }
 
   // LEARN: the tool comes on screen
@@ -709,13 +773,16 @@
     prefs = await ctx.getPreferences();
     // the user may have switched away (unmount) while preferences were loading
     if (generation !== mountGeneration || !root) return;
-    $(".sm-refresh-label").textContent = `Live · every ${prefs.refresh_interval_seconds}s`;
+    inBackground = !document.hasFocus();
+    updateRefreshLabel();
     // an open list reserves room for every row up front, so it never grows as rows arrive
     // setProperty("--x", v) → set a CSS variable from JS (used in view.css)
     $(".sm").style.setProperty("--sm-top-count", prefs.top_apps_count);
     applyTopListOpenState();
     loadMacInfo(generation);
     root.addEventListener("click", onTopToggleClick);
+    window.addEventListener("focus", onWindowFocusChange);
+    window.addEventListener("blur", onWindowFocusChange);
     mounted = true;
     // LEARN: if the window was hidden while mount was waiting, the timers stay
     // off; the shell's next "shown" event calls resume and starts them.
@@ -729,6 +796,8 @@
     mounted = false;
     stopRefreshTimers();
     if (root) root.removeEventListener("click", onTopToggleClick);
+    window.removeEventListener("focus", onWindowFocusChange);
+    window.removeEventListener("blur", onWindowFocusChange);
     root = null;
   }
 

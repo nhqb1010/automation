@@ -63,6 +63,48 @@
     forwardClientError(event.reason && (event.reason.message || event.reason), "promise", 0),
   );
 
+  // LEARN: the security policy (index.html) refused something → write it to
+  //   the log, so a blocked attempt is visible in the Logs tool
+  //   violatedDirective = which rule ("script-src"), blockedURI = what it was
+  window.addEventListener("securitypolicyviolation", (event) =>
+    forwardClientError(
+      `Blocked by the security policy: ${event.violatedDirective} ${event.blockedURI || "inline code"}`,
+      event.sourceFile || "security-policy",
+      event.lineNumber,
+    ),
+  );
+
+  // ---------- error badge ----------
+  // LEARN: a red count on the Logs sidebar entry when errors were logged
+  //   that you haven't looked at yet (Python counts them, see logging_setup.py)
+  //   checked every few seconds; opening Logs marks them all as seen
+  const ERROR_BADGE_TOOL_ID = "log_viewer";
+  const ERROR_BADGE_CHECK_MS = 5000;
+  let errorBadgeTimer = null;
+
+  async function refreshErrorBadge() {
+    if (!state.api) return;
+    // looking at the Logs tool right now → everything on it counts as seen
+    if (state.currentId === ERROR_BADGE_TOOL_ID) await state.api.mark_errors_seen();
+    const unseen = await state.api.get_unseen_error_count();
+    const badge = document.querySelector(`[data-view="${ERROR_BADGE_TOOL_ID}"] .nav-badge`);
+    if (!badge) return;
+    badge.hidden = unseen === 0;
+    // "99+" so a flood of errors can't stretch the sidebar
+    badge.textContent = unseen > 99 ? "99+" : String(unseen);
+  }
+
+  function startErrorBadgeTimer() {
+    if (errorBadgeTimer) return;
+    refreshErrorBadge();
+    errorBadgeTimer = setInterval(refreshErrorBadge, ERROR_BADGE_CHECK_MS);
+  }
+
+  function stopErrorBadgeTimer() {
+    clearInterval(errorBadgeTimer);
+    errorBadgeTimer = null;
+  }
+
   // a tool failed to load → draw a friendly card instead
   // called by → openView
   function renderErrorCard(container, title, detail) {
@@ -105,15 +147,36 @@
     style.dataset.tool = toolId;
     style.textContent = view.css;
     document.head.appendChild(style);
-    // a <script> tag added to the page runs its code right away
-    //   → view.js runs → it calls BaoTools.register(...)
-    // "//# sourceURL=…" → error messages name the file "system_monitor/view.js"
-    const script = document.createElement("script");
-    script.textContent = `${view.js}\n//# sourceURL=${toolId}/view.js`;
-    document.body.appendChild(script);
+    // LEARN: run the tool's script as a FILE, never as pasted-in text
+    //   the security policy (index.html) refuses script text put on the page
+    //   → the text is wrapped in a Blob (an in-memory file) with its own
+    //   blob: address, and loaded like any script file
+    //   "//# sourceURL=…" → error messages name the file "system_monitor/view.js"
+    await runToolScript(`${view.js}\n//# sourceURL=${toolId}/view.js`);
     // LEARN: throw new Error(…) ≈ Python raise Exception(…)
     if (!toolModules[toolId]) throw new Error(`${toolId} did not register itself`);
     return toolModules[toolId];
+  }
+
+  // LEARN: load script text through a blob: address and wait until it ran
+  //   new Promise((resolve, reject) => …) = make your own "answer later":
+  //   call resolve() when done, reject(error) when it failed
+  //   URL.revokeObjectURL → free the in-memory file afterwards
+  function runToolScript(code) {
+    const url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = url;
+      script.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      script.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("tool script could not be loaded"));
+      };
+      document.body.appendChild(script);
+    });
   }
 
   // highlight the sidebar entry of what's on screen
@@ -144,6 +207,8 @@
     container.innerHTML = "";
     // remember it → reopens here at the next start (state.json)
     state.api.update_ui_state({ last_tool: viewId });
+    // opening Logs clears its error badge straight away
+    if (viewId === ERROR_BADGE_TOOL_ID) refreshErrorBadge();
     const isStillCurrent = () => state.currentId === viewId;
 
     if (viewId === "settings") {
@@ -192,6 +257,7 @@
         (tool, index) => `<div class="nav-item" data-view="${tool.id}" title="${tool.name}">
           <span class="nav-icon">${I.svg(tool.icon)}</span>
           <span class="label">${tool.name}</span>
+          <span class="nav-badge num" hidden></span>
           ${index < 9 ? `<span class="kbd">⌘${index + 1}</span>` : ""}
         </div>`,
       )
@@ -231,6 +297,9 @@
   // Tools pause their timers then, so nothing polls in the background.
   //   called by → the browser ("visibilitychange" event)
   function handleVisibilityChange() {
+    // the badge check pauses too → nothing runs while the window is hidden
+    if (document.hidden) stopErrorBadgeTimer();
+    else startErrorBadgeTimer();
     const tool = state.current;
     if (!tool) return;
     if (document.hidden && tool.pause) tool.pause();
@@ -243,12 +312,21 @@
     state.api = window.pywebview.api;
     // LEARN: Promise.all([a, b]) → ask both at once, wait for both answers
     //   const [tools, ui] = … → unpack ≈ Python tools, ui = …
-    const [tools, ui] = await Promise.all([state.api.list_tools(), state.api.get_ui_state()]);
+    const [tools, ui, appInfo] = await Promise.all([
+      state.api.list_tools(),
+      state.api.get_ui_state(),
+      state.api.get_app_info(),
+    ]);
     state.tools = tools;
     buildSidebar();
+    // "v0.1.0" quietly under Settings; the title shows the full stamp on hover
+    const version = document.getElementById("app-version");
+    version.textContent = appInfo.short_label;
+    version.title = appInfo.label;
     setSidebarCollapsed(ui.sidebar_collapsed, false);
     document.addEventListener("keydown", handleShortcut);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    startErrorBadgeTimer();
     // reopen the last view if it still exists, else the first tool
     //   .some(f) → true if f is true for any item ≈ Python any(…)
     const known = ui.last_tool === "settings" || tools.some((t) => t.id === ui.last_tool);

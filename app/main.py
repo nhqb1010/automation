@@ -33,10 +33,12 @@ import webview
 from AppKit import NSApplication
 from PyObjCTools import AppHelper
 
-from app.bridge import AppBridge
+from app.app_usage import AppUsageMonitor
+from app.bridge import AppBridge, AppServices
 from app.build_info import format_build_label, load_build_info
 from app.config import AppSettings
 from app.logging_setup import configure_app_logging
+from app.login_item import LoginItemManager
 from app.paths import DATA_DIR, INSTANCE_SOCKET, STATE_FILE, UI_DIR, is_installed_app
 from app.preferences import PreferencesService
 from app.single_instance import SingleInstanceGuard
@@ -66,7 +68,8 @@ def run_internal_apps() -> None:
     returns only when the window is closed
     """
     settings = AppSettings()
-    log_file = configure_app_logging(settings)
+    logging_setup = configure_app_logging(settings)
+    log_file = logging_setup.log_file
     installed = is_installed_app()
     build_info = load_build_info(is_installed=installed)
     build_label = format_build_label(build_info)
@@ -87,7 +90,12 @@ def run_internal_apps() -> None:
         tools=tools,
         preferences=PreferencesService(store=store, tools=tools),
         store=store,
-        build_info=build_info,
+        services=AppServices(
+            build_info=build_info,
+            app_usage=AppUsageMonitor(),
+            login_item=LoginItemManager(is_installed=installed),
+            error_counter=logging_setup.error_counter,
+        ),
     )
     # reopen where it was last time, if that spot is still on a screen
     geometry = choose_window_geometry(
