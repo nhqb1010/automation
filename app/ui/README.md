@@ -1,4 +1,6 @@
 <!-- LEARN-README -->
+start here → [index.html](index.html), then follow each file's "read next"
+
 # app/ui/
 
 The shell page: plain HTML, CSS and JavaScript, no build step.
@@ -36,3 +38,12 @@ switch tool ─▶ unmount()              ──▶ timers stop, listeners remov
 | visibilitychange | Browser event fired when the page is hidden or shown |
 | pywebviewready | Event pywebview fires once window.pywebview.api exists |
 | tabular-nums | Font setting giving all digits equal width, so numbers do not jitter |
+| IIFE | (() => { … })() — runs once, keeps the file's names private |
+| window global | window.BaoCharts = … — how these files share code without imports |
+| arrow function | (x) => x * 2 — a short way to write a function |
+| template string | Text in backticks with ${x} inside, like a Python f-string |
+| Promise / await | "Answer comes later"; await pauses until it arrives (every bridge call) |
+| innerHTML / textContent | Replace an element's inside with HTML / with plain safe text |
+| event listener | addEventListener("click", f) — call f when that happens |
+| event delegation | One listener on a parent handles clicks on all its buttons |
+| mount / unmount | A view's start / stop hooks, called by shell.js |

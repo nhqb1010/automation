@@ -1,4 +1,13 @@
+/* LEARN: YOU ARE HERE
+     shell.js adds THIS FILE as a <style> tag on first open
+     ▶ the look of view.html's pieces (colours come from app/ui/style.css)
+     read next → app/tools/system_monitor/ui/view.js */
+
 /* System Monitor layout. Shared tokens come from the shell's style.css. */
+
+/* LEARN: every rule starts with .sm (or an sm- class) → it only touches this
+   tool's page, never the shell or other tools
+   industry term: "scoping" / "namespacing" CSS */
 
 .sm .card-title [data-icon] { display: grid; color: var(--text-muted); }
 .sm .card-title svg { width: 14px; height: 14px; }
@@ -13,17 +22,26 @@
   animation: sm-pulse 2s infinite;
 }
 
+/* the green "Live" dot fades to 35 % halfway, then back → a slow pulse */
 @keyframes sm-pulse { 50% { opacity: 0.35; } }
 
 /* LEARN: container queries. The content area is a size container, so the
    grid reacts to the space the tool actually has (sidebar open or
-   collapsed), not to the whole window like a media query would. */
+   collapsed), not to the whole window like a media query would.
+
+     wide    → 3 columns   [CPU] [Memory] [Temp]
+     ≤ 960px → 2 columns   [CPU] [Memory] / [Temp]
+     ≤ 620px → 1 column
+
+   repeat(3, minmax(0, 1fr)) = 3 equal columns that may shrink to 0
+     (plain 1fr can't shrink below its content → long names would overflow) */
 .sm-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* grid-column: 1 / -1 → from the first column line to the last = full width */
 .sm-storage { grid-column: 1 / -1; }
 
 @container (max-width: 960px) {
@@ -44,7 +62,9 @@
 
 
 
-/* per-core columns */
+/* per-core columns
+   .col = the grey column, .fill = the coloured part inside it
+   view.js sets .fill's height to the core's percent → a bar chart */
 .sm-cores { display: flex; gap: 6px; align-items: flex-end; height: 70px; margin-top: 14px; }
 .sm-core { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
 .sm-core .col { flex: 1; width: 100%; max-width: 22px; background: var(--track); border-radius: 4px; position: relative; overflow: hidden; }
@@ -52,7 +72,7 @@
 .sm-core .tag { font-size: 10px; color: var(--text-muted); }
 
 
-/* top apps */
+/* top apps (the list under "Top apps ▸") */
 .top-toggle {
   margin-top: 14px;
   width: 100%;
@@ -70,14 +90,17 @@
 
 .top-toggle [data-icon] { display: grid; transition: transform 0.2s; }
 .top-toggle svg { width: 12px; height: 12px; }
+/* open → the ▸ arrow turns to point down */
 .top-toggle.open [data-icon] { transform: rotate(90deg); }
 /* every row has the same height, and an open list reserves room for all of
    them (--sm-top-count is set from Settings), so rows arriving never resize it */
+/* calc(a * b) = CSS maths; var(--sm-top-count, 5) → 5 if not set yet */
 .sm { --sm-app-row-height: 38px; }
 .top-list { display: none; margin-top: 8px; }
 .top-list.open { display: block; min-height: calc(var(--sm-app-row-height) * var(--sm-top-count, 5)); }
 .top-empty { font-size: 12px; color: var(--text-muted); padding: 8px 2px; }
 
+/* one app row: icon | name | bar | value | sparkline (5 columns) */
 .app-row {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 90px 52px 56px;
@@ -91,6 +114,7 @@
   transition: transform 0.35s ease;
 }
 
+/* a new row fades in (view.js adds "entering") */
 .app-row.entering { animation: sm-row-in 0.3s ease; }
 
 @keyframes sm-row-in { from { opacity: 0; } }
@@ -99,6 +123,7 @@
 .app-icon { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: var(--text-muted); }
 .app-icon img { width: 24px; height: 24px; }
 .app-icon svg { width: 16px; height: 16px; }
+/* long name → one line, cut with "…" */
 .app-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
 .bar > div { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
@@ -113,7 +138,9 @@
   .mini-ring { display: block; }
 }
 
-/* temperature */
+/* temperature
+   .single → only one gauge (no GPU reading) → it takes the full width
+   .unavailable on the card → hide gauges / chart, show the reason box */
 .sm-gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .sm-gauges.single { grid-template-columns: 1fr; }
 .sm-unavailable { display: none; text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
@@ -125,7 +152,47 @@
 .sm-temperature.unavailable .legend { display: none; }
 .sm-temperature.unavailable .sm-unavailable { display: block; }
 
-/* storage */
+/* power
+   3-column window → the card spans the full width (a strip under the others)
+   2 / 1 columns   → a normal card next to Temperature (rule further down)
+   flow boxes wrap onto a 2nd line when the card is narrow */
+.sm-power { grid-column: 1 / -1; }
+.sm-power-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.sm-power-main { flex: 1; min-width: 240px; }
+.sm-power-state { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.sm-power-state b { font-weight: 600; }
+.sm-power-time { color: var(--text-muted); font-size: 12px; }
+.sm-power-bolt { display: none; color: var(--good); }
+.sm-power-bolt svg { width: 14px; height: 14px; }
+.sm-power.charging .sm-power-bolt { display: grid; }
+.sm-power-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.sm-flow-box {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 6px 10px;
+  min-width: 78px;
+}
+.sm-flow-box span { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.sm-flow-box b { font-size: 15px; font-weight: 650; }
+.sm-flow-arrow { color: var(--text-muted); font-size: 10px; }
+/* view.js hides boxes / arrows that don't apply (unplugged → no charger) */
+.sm-flow-box[hidden], .sm-flow-arrow[hidden] { display: none; }
+.sm-power-health { min-width: 140px; }
+.sm-power.unavailable { opacity: 0.6; }
+.sm-power.unavailable .sm-power-body { display: none; }
+.sm-power.unavailable .sm-unavailable { display: block; }
+
+@container (max-width: 960px) {
+  .sm-power { grid-column: auto; }
+}
+
+/* storage
+   flex-wrap: wrap → drives flow onto the next line when the row is full
+   .main = the startup disk (bigger), .secondary = muted extra volumes
+   ch = width of one "0" character → 20ch ≈ room for 20 characters */
 .sm-storage-note { margin-left: auto; text-transform: none; letter-spacing: 0; }
 .sm-drives { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
 .drive { display: flex; align-items: center; gap: 12px; }

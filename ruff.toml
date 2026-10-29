@@ -1,10 +1,23 @@
+# LEARN: YOU ARE HERE
+#   used by ▶ make lint and VS Code ▶ THIS FILE sets Ruff's rules
+#   ▶ every .py file is checked against them
+#   read next → example.env
+
+# LEARN: Ruff = a linter (finds bugs and style problems) + formatter
+#   extend → start from the shared personal config, then add the lines below
 extend = "~/.config/ruff/ruff.toml"
+
+# LEARN: per-file-ignores → switch off a rule for some files only
+#   "tests/**" = every file under tests/ (** = any depth)
+#   S101 = "assert used", PLR2004 = "magic number", S603 = "subprocess call",
+#   E501 = "line too long"
 
 # tests use plain assert and literal expected values by design
 [lint.per-file-ignores]
 "tests/**" = ["S101", "PLR2004"]
-# fixed macOS tools only (sysctl, hdiutil), never user input
+# fixed macOS tools only (sysctl, hdiutil, ioreg), never user input
 "app/tools/system_monitor/cpu_memory.py" = ["S603"]
 "app/tools/system_monitor/storage.py" = ["S603"]
+"app/tools/system_monitor/power.py" = ["S603"]
 # Apple's method names are longer than the line limit
 "app/tools/system_monitor/app_icons.py" = ["E501"]

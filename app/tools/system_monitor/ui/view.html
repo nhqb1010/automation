@@ -1,3 +1,27 @@
+<!-- LEARN: YOU ARE HERE
+       bridge load_tool_view ▶ shell.js puts THIS FRAGMENT in the content area
+       ▶ view.js fills the empty boxes with live numbers
+       read next → app/tools/system_monitor/ui/view.css -->
+
+<!-- LEARN: a "fragment" = only the part that goes inside the page
+     (no html / head / body; the shell's index.html already has those)
+
+     the empty elements are placeholders; view.js finds them by class name
+       e.g. class="sm-cpu-ring" → view.js draws the CPU ring in it
+     "sm-" prefix = System Monitor → no clash with other tools' names
+
+     class="card loading" → shimmer until the first data arrives (style.css)
+     data-icon="cpu" → view.js swaps in that icon (icons.js)
+     — = placeholder dash until a value arrives
+
+     ┌ CPU ──────────┬ Memory ───────┬ Temperature ──┐
+     │ ring + cores  │ ring + swap   │ 2 gauges      │
+     │ top apps ▸    │ top apps ▸    │ line chart    │
+     ├ Power ────────┴───────────────┴───────────────┤
+     │ battery ring · charger ▶ Mac ▶ battery watts  │
+     ├ Storage ──────────────────────────────────────┤
+     │ one ring per drive                            │
+     └───────────────────────────────────────────────┘ -->
 <div class="sm">
   <div class="page-head">
     <h1>System Monitor</h1>
@@ -20,6 +44,7 @@
         <span><i style="background: var(--e-core)"></i>Efficiency</span>
         <span><i style="background: var(--p-core)"></i>Performance</span>
       </div>
+      <!-- click → view.js opens / closes the list below; data-list says which -->
       <button class="top-toggle" data-list="cpu"><span data-icon="chevron-right"></span>Top apps</button>
       <div class="top-list sm-cpu-top"></div>
     </section>
@@ -45,14 +70,52 @@
         <div class="gauge sm-gpu-gauge"></div>
       </div>
       <svg class="spark sm-temp-spark"></svg>
+      <!-- style="…" = CSS right on one element; i = a small colour square -->
       <div class="legend">
         <span><i style="background: var(--series-1)"></i><span class="sm-temp-legend">CPU</span></span>
         <span class="sm-legend-gpu"><i style="background: var(--series-2)"></i>GPU</span>
         <span>hottest · 30–100°C</span>
       </div>
+      <!-- shown instead of the gauges when no sensor can be read -->
       <div class="sm-unavailable">
         <div class="sm-unavailable-icon" data-icon="thermometer"></div>
         <div>Temperature unavailable</div>
+        <div class="sm-unavailable-reason"></div>
+      </div>
+    </section>
+
+    <!-- battery ring | status + watts flow + sparkline | health
+         view.js fills every empty span; data-flow marks the flow boxes -->
+    <section class="card loading sm-power">
+      <div class="card-title"><span data-icon="battery"></span>Power</div>
+      <div class="sm-power-body">
+        <div class="sm-battery-ring"></div>
+        <div class="sm-power-main">
+          <div class="sm-power-state">
+            <span class="sm-power-bolt" data-icon="zap"></span>
+            <b class="sm-power-status">—</b>
+            <span class="sm-power-time"></span>
+          </div>
+          <div class="sm-power-flow">
+            <div class="sm-flow-box" data-flow="charger"><span>Charger</span><b class="num">—</b></div>
+            <div class="sm-flow-arrow">▶</div>
+            <div class="sm-flow-box" data-flow="in"><span>Drawing</span><b class="num">—</b></div>
+            <div class="sm-flow-arrow">▶</div>
+            <div class="sm-flow-box" data-flow="mac"><span>Mac uses</span><b class="num">—</b></div>
+            <div class="sm-flow-box" data-flow="battery"><span>Battery</span><b class="num">—</b></div>
+          </div>
+          <svg class="spark sm-power-spark"></svg>
+          <div class="legend"><span><i style="background: var(--accent)"></i>Mac power use · 0–100 W</span></div>
+        </div>
+        <div class="sm-power-health">
+          <div class="stat-line">Health <b class="num sm-battery-health">—</b></div>
+          <div class="stat-line">Cycles <b class="num sm-battery-cycles">—</b></div>
+          <div class="stat-line">Battery <b class="num sm-battery-temp">—</b></div>
+        </div>
+      </div>
+      <div class="sm-unavailable">
+        <div class="sm-unavailable-icon" data-icon="battery"></div>
+        <div>Power info unavailable</div>
         <div class="sm-unavailable-reason"></div>
       </div>
     </section>

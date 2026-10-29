@@ -1,3 +1,6 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks app/preferences.py (each tool's settings)
+#   read next → tests/test_app_bridge.py
 import pytest
 
 from app.preferences import InvalidPreferenceError, PreferencesService
@@ -13,6 +16,8 @@ class SystemMonitorSettingsOnlyTool(DummyTool):
     settings_model = SystemMonitorSettings
 
 
+# LEARN: a fixture in a test file → only this file can use it
+#   it asks for state_store itself (fixtures can use other fixtures)
 @pytest.fixture
 def preferences(state_store: StateStore) -> PreferencesService:
     return PreferencesService(
@@ -32,6 +37,7 @@ class TestAppPreferencesReadToolPreferences:
     def test_app_preferences_read_bad_saved_value_resets_that_field(
         self, preferences: PreferencesService, state_store: StateStore
     ) -> None:
+        # 7 is not an allowed choice → reset; 10 is fine → kept
         state_store.save_tool_preferences_raw(
             "dummy", {"refresh_interval_seconds": 7, "top_apps_count": 10}
         )
@@ -94,6 +100,8 @@ class TestAppPreferencesDescribeSettingsSections:
     def test_app_preferences_describe_lists_choices_and_hides_internal_fields(
         self, preferences: PreferencesService
     ) -> None:
+        # LEARN: (section,) = a_list → unpack exactly ONE item
+        #   fails if the list has 0 or 2+ items → also checks the count
         (section,) = preferences.describe_settings_sections()
         fields = {field.name: field for field in section.fields}
 

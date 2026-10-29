@@ -1,3 +1,12 @@
+# LEARN: YOU ARE HERE
+#   used by ▶ git ▶ THIS FILE lists what is never committed
+#   read next → README.md, section "cspell.json"
+#
+# LEARN: one pattern per line
+#   name/  → a folder with that name, anywhere
+#   *.x    → every file ending in .x
+#   below: Mac junk, the venv, caches, build output, your .env, and files
+#   the app writes while it runs (state, logs, the single-instance socket)
 .DS_Store
 .venv/
 __pycache__/

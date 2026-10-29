@@ -1,0 +1,49 @@
+<!-- LEARN: YOU ARE HERE
+       bridge load_tool_view ▶ shell.js puts THIS FRAGMENT in the content area
+       ▶ view.js fills the list with log lines
+       read next → app/tools/log_viewer/ui/view.css -->
+
+<!-- LEARN: same idea as system_monitor/ui/view.html
+     a fragment (no html / head / body), empty boxes found by class name
+     "lv-" prefix = Log Viewer → no clash with other tools
+
+     ┌ Logs ─────────────────────────── ● Following ┐
+     │ [All 120] [Info] [Warn 3] [Error 1]  🔍 ____  ⏸ │   toolbar
+     │ ┌──────────────────────────────────────────┐ │
+     │ │ 22:12:01 INFO  [app.main] Starting …     │ │   only this box
+     │ │ 22:12:03 WARN  [storage] Drive problem … │ │   scrolls
+     │ └──────────────────────────────────────────┘ │
+     └──────────────────────────────────────────────┘ -->
+<div class="lv">
+  <div class="page-head">
+    <h1>Logs</h1>
+    <div class="meta"><span class="lv-dot"></span><span class="lv-status-label">Following</span></div>
+  </div>
+
+  <div class="lv-toolbar">
+    <!-- level filter: one button is "on"; data-level says which group it shows
+         data-count marks where view.js writes that group's line count -->
+    <div class="segmented lv-levels">
+      <button data-level="all" class="on">All <span class="num lv-count" data-count="all">0</span></button>
+      <button data-level="info">Info <span class="num lv-count" data-count="info">0</span></button>
+      <button data-level="warning">Warn <span class="num lv-count" data-count="warning">0</span></button>
+      <button data-level="error">Error <span class="num lv-count" data-count="error">0</span></button>
+    </div>
+
+    <!-- LEARN: label wrapping an input → clicking the icon focuses the box
+         type="search" → a text box with a built-in clear (×) button -->
+    <label class="lv-search">
+      <span data-icon="search"></span>
+      <input class="lv-search-input" type="search" placeholder="Filter lines" spellcheck="false">
+    </label>
+
+    <!-- Pause ⇄ Jump to newest; view.js swaps the icon and the text -->
+    <button class="text-btn lv-follow"><span class="lv-follow-icon"></span><span class="lv-follow-label">Pause</span></button>
+  </div>
+
+  <section class="card lv-card">
+    <div class="lv-lines"></div>
+    <!-- shown while there is nothing to show -->
+    <div class="lv-empty">Waiting for log lines…</div>
+  </section>
+</div>

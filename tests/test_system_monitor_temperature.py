@@ -1,3 +1,6 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks temperature.py with fake sensors
+#   read next → tests/test_system_monitor_power.py
 import pytest
 
 from app.tools.system_monitor.temperature import (
@@ -11,6 +14,15 @@ from app.tools.system_monitor.temperature import (
 
 
 class FakeSensorReader:
+    """
+    LEARN: stands in for the real SMC / IOHID sensor readers
+
+    used by → the TemperatureMonitor tests below
+    fail=True → behaves like a sensor that broke
+    it only needs the same method name as the real reader
+      industry term: "duck typing" (if it has the method, it fits)
+    """
+
     def __init__(
         self, readings: list[SensorReading] | None = None, fail: bool = False
     ) -> None:
@@ -33,6 +45,8 @@ class TestSystemMonitorTemperatureSummarizeSmcReadings:
         assert summary is not None
         assert summary.source == "cpu_gpu"
         assert summary.cpu_hottest == 60.0
+        # LEARN: pytest.approx → "equal, allowing tiny decimal rounding"
+        #   (0.1 + 0.2 is 0.30000000000000004 in floats)
         assert summary.cpu_average == pytest.approx(50.0)
         assert summary.gpu_hottest == 47.0
 
@@ -57,6 +71,8 @@ class TestSystemMonitorTemperatureSummarizeChipDieReadings:
 class TestSystemMonitorTemperatureSmcKeyCodes:
     def test_system_monitor_temperature_smc_key_round_trip(self) -> None:
         assert decode_smc_key(encode_smc_key("Tp09")) == "Tp09"
+        # LEARN: 0x… = a number written in hexadecimal (base 16)
+        #   "#KEY" as 4 bytes: # = 0x23, K = 0x4B, E = 0x45, Y = 0x59
         assert encode_smc_key("#KEY") == 0x234B4559
 
 
@@ -69,6 +85,7 @@ class TestSystemMonitorTemperatureMonitor:
         monitor = TemperatureMonitor(
             smc_reader=FakeSensorReader(fake_smc_readings),
             hid_reader=FakeSensorReader(fake_hid_readings),
+            # False → never touch the real Mac's sensors in a test
             open_real_sensors=False,
         )
 

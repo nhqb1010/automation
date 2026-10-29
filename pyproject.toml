@@ -1,3 +1,17 @@
+# LEARN: YOU ARE HERE
+#   used by ▶ uv (install), pytest, VS Code ▶ THIS FILE lists what the
+#   project needs + tool settings ▶ uv.lock pins the exact versions
+#   read next → ruff.toml
+
+# LEARN: TOML = a settings file format
+#   [section]      → a group of settings
+#   key = "value"  → one setting
+#   [a.b]          → section b inside section a
+#   # → comment
+
+# what the project is and what it needs to run
+#   ">=7.2.2" → this version or newer; exact versions live in uv.lock
+#   ≈ requirements.txt, but the modern standard place for it
 [project]
 name = "internal-apps"
 version = "0.1.0"
@@ -9,10 +23,15 @@ dependencies = [
     "pywebview>=6.2.1",
 ]
 
+# LEARN: uv = a fast installer for Python packages (lives in .venv here)
+#   python-downloads = "never" → use the Python already on this Mac,
+#     never download another one
+#   required-version → refuse to run with an older uv
 [tool.uv]
 python-downloads = "never"
 required-version = ">=0.13.4"
 
+# only needed while developing (tests, lint), not to run the app
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
@@ -20,6 +39,8 @@ dev = [
     "uv>=0.13.4",
 ]
 
+# pytest settings; addopts = options added to every run
+#   -ra → summary at the end of every test that didn't plainly pass
 [tool.pytest.ini_options]
 addopts = "-ra"
 
