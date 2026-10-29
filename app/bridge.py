@@ -25,6 +25,7 @@ LEARN: Promise (JavaScript) = "the answer will come later"
 import logging
 from typing import Any
 
+from app.build_info import BuildInfo, format_build_label
 from app.preferences import PreferencesService
 from app.state import StateStore
 from app.tools.base import Tool, UnknownToolActionError
@@ -46,12 +47,17 @@ class AppBridge:
     """
 
     def __init__(
-        self, tools: list[Tool], preferences: PreferencesService, store: StateStore
+        self,
+        tools: list[Tool],
+        preferences: PreferencesService,
+        store: StateStore,
+        build_info: BuildInfo,
     ) -> None:
         # tool id → tool, for quick lookup
         self._tools = {tool.info.id: tool for tool in tools}
         self._preferences = preferences
         self._store = store
+        self._build_info = build_info
 
     def list_tools(self) -> list[dict[str, str]]:
         """called by → shell.js at startup ▶ builds the sidebar."""
@@ -126,6 +132,13 @@ class AppBridge:
             section.model_dump(mode="json")
             for section in self._preferences.describe_settings_sections()
         ]
+
+    def get_app_info(self) -> dict[str, Any]:
+        """called by → settings.js ▶ the version line under the settings."""
+        return {
+            "label": format_build_label(self._build_info),
+            "is_dev": self._build_info.is_dev,
+        }
 
     def log_client_error(self, message: str, source: str, line: int) -> None:
         """

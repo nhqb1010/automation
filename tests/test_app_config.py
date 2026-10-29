@@ -1,6 +1,6 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks app/config.py (settings from .env / environment)
-#   read next → tests/test_app_state.py
+#   read next → tests/test_app_paths.py
 from pathlib import Path
 
 import pytest

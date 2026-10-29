@@ -51,7 +51,8 @@
 
   // the whole page: a heading, then one card per tool
   // called by → refreshSettingsPage
-  function renderSettingsSections(sections) {
+  // appInfo = { label, is_dev } from bridge get_app_info → the footer line
+  function renderSettingsSections(sections, appInfo) {
     const I = window.BaoIcons;
     root.innerHTML = `
       <div class="page-head"><h1>Settings</h1><div class="meta">Changes apply immediately</div></div>
@@ -65,7 +66,10 @@
             ${section.fields.map((field) => renderSettingRow(section, field)).join("")}
           </section>`,
         )
-        .join("")}`;
+        .join("")}
+      <div class="settings-footer num"></div>`;
+    // textContent → plain text, never markup
+    root.querySelector(".settings-footer").textContent = appInfo.label;
   }
 
   // ask Python for the current settings, then redraw
@@ -73,10 +77,11 @@
   async function refreshSettingsPage() {
     // remember which page asked (see the check after the await)
     const page = root;
-    const sections = await api.get_settings_sections();
+    // ask for both at once (see Promise.all in shell.js)
+    const [sections, appInfo] = await Promise.all([api.get_settings_sections(), api.get_app_info()]);
     // the user may have left Settings while this was loading
     if (root !== page || !root) return;
-    renderSettingsSections(sections);
+    renderSettingsSections(sections, appInfo);
   }
 
   // LEARN: ONE click listener on the whole page, not one per button

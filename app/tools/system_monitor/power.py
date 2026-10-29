@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   system_monitor/__init__.py, every live refresh ▶ THIS FILE asks macOS
 #   about the battery and charger ▶ PowerStats ▶ JSON ▶ the Power card
-#   read next → app/tools/system_monitor/top_apps.py
+#   read next → app/tools/system_monitor/mac_info.py
 """
 Battery and charger: charge level, charging or not, and the watts flowing.
 
@@ -27,13 +27,20 @@ import subprocess
 from dataclasses import dataclass
 from typing import Any
 
-from app.tools.system_monitor.models import PowerStats
+from Foundation import NSProcessInfo
+
+from app.tools.system_monitor.models import ChargeState, PowerStats
 from app.tools.system_monitor.recent_values import RecentValues
 
 logger = logging.getLogger(__name__)
 
 IOREG_PATH = "/usr/sbin/ioreg"
 IOREG_TIMEOUT_SECONDS = 2
+# at or below these percentages on battery → "low" / "very_low"
+LOW_BATTERY_PERCENT = 20
+VERY_LOW_BATTERY_PERCENT = 10
+# plugged in, not charging, this full or more → "charged" (not "on hold")
+CHARGED_PERCENT = 99
 # macOS's "still estimating" value for the time remaining
 TIME_REMAINING_UNKNOWN = 65535
 # LEARN: two's complement (industry term)
@@ -178,6 +185,46 @@ def calculate_mac_watts(reading: BatteryReading, battery_watts: float) -> float 
     return max(0.0, reading.power_in_milliwatts / 1000 - battery_watts)
 
 
+def classify_charge_state(reading: BatteryReading) -> ChargeState:
+    """
+    LEARN: one word for what the battery is doing (picks the card's colour)
+
+    called by → build_power_stats
+
+      plugged in ─┬─ charging                        → "charging"   green
+                  ├─ full (or ≥ 99 %, not charging)  → "charged"    teal
+                  └─ not charging, below 99 %        → "on_hold"    blue
+                     (macOS holds it ~80 % to protect the battery)
+      on battery ─┬─ ≤ 10 %                          → "very_low"   red
+                  ├─ ≤ 20 %                          → "low"        amber
+                  └─ otherwise                       → "on_battery" grey
+    """
+    if reading.plugged_in:
+        if reading.charging:
+            return "charging"
+        if reading.fully_charged or reading.percent >= CHARGED_PERCENT:
+            return "charged"
+
+        return "on_hold"
+
+    if reading.percent <= VERY_LOW_BATTERY_PERCENT:
+        return "very_low"
+    if reading.percent <= LOW_BATTERY_PERCENT:
+        return "low"
+
+    return "on_battery"
+
+
+def read_low_power_mode() -> bool:
+    """
+    LEARN: is macOS Low Power Mode on? (System Settings → Battery)
+
+    NSProcessInfo = Apple's "facts about this program and system" object
+    called by → PowerReader.read_power_stats, every refresh
+    """
+    return bool(NSProcessInfo.processInfo().isLowPowerModeEnabled())
+
+
 def build_power_stats(reading: BatteryReading, history: list[float]) -> PowerStats:
     """
     LEARN: turn a reading into what the Power card shows
@@ -195,6 +242,7 @@ def build_power_stats(reading: BatteryReading, history: list[float]) -> PowerSta
     )
     return PowerStats(
         available=True,
+        charge_state=classify_charge_state(reading),
         percent=reading.percent,
         plugged_in=reading.plugged_in,
         charging=reading.charging,
@@ -257,7 +305,12 @@ class PowerReader:
             self._recent_mac_watts.add_sample(stats.mac_watts)
 
         # model_copy(update=…) → a copy with some fields changed
-        return stats.model_copy(update={"history": self._recent_mac_watts.values()})
+        return stats.model_copy(
+            update={
+                "history": self._recent_mac_watts.values(),
+                "low_power_mode": read_low_power_mode(),
+            }
+        )
 
     def _build_unavailable_power_stats(self, reason: str) -> PowerStats:
         if reason not in self._logged_reasons:

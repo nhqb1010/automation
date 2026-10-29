@@ -11,6 +11,8 @@
 //   every N s (Settings) ──▶ call("get_live_stats") ──▶ rings, cores, gauges, power
 //        └─ if a top apps list is open ──▶ call("get_top_apps") ──▶ rows
 //   every 30 s          ──▶ call("get_storage")    ──▶ donuts
+//   once per visit      ──▶ call("get_mac_info")   ──▶ This Mac card
+//                           (its uptime line ticks on with every live refresh)
 //
 //   tool hidden / window minimised ──▶ timers stop; back on screen ──▶ restart
 //
@@ -31,9 +33,16 @@
   const TEMP_SCALE = { min: 30, max: 100 };
   const DISK_WARN = 75;
   const DISK_CRITICAL = 90;
-  // battery: low is bad → red at 10 % or less, yellow at 20 % or less
-  const BATTERY_CRITICAL = 10;
-  const BATTERY_WARN = 20;
+  // charge state (from power.py) → the word inside the ring
+  //   the colours live in view.css (data-state rules)
+  const RING_LABEL_BY_STATE = {
+    charging: "charging",
+    charged: "charged",
+    on_hold: "on hold",
+    on_battery: "on battery",
+    low: "low",
+    very_low: "very low",
+  };
   // fixed scale for the Mac power sparkline (watts)
   const POWER_SCALE = { min: 0, max: 100 };
   // matches the 60 s of recent values kept in Python (recent_values.py)
@@ -73,6 +82,8 @@
   //   here: app key → that app's row on screen
   let topRows = { cpu: new Map(), memory: new Map() };
   let storageView = null;
+  // the This Mac answer, kept so the uptime line can tick on
+  let macInfo = null;
   // set once a GPU reading has been seen, so one missed reading does not
   // collapse the card to a single gauge and back
   let gpuSeen = false;
@@ -236,15 +247,25 @@
     return `${sign}${watts.toFixed(1)} W`;
   }
 
-  // the status line: "Charging · 58 min to full", "On battery · 3 h left", …
+  // LEARN: the status line for each charge state → [bold part, grey part]
+  //   switch (x) { case "a": … } = pick the block matching x
+  //   ≈ Python match x: case "a": …
   function describePowerState(power) {
-    if (power.fully_charged || (power.plugged_in && !power.charging && power.percent >= 99)) {
-      return ["Charged", ""];
-    }
     const time = power.minutes_remaining == null ? "estimating…" : formatMinutes(power.minutes_remaining);
-    if (power.charging) return ["Charging", `${time} to full`];
-    if (power.plugged_in) return ["Plugged in, not charging", ""];
-    return ["On battery", `${time} left`];
+    switch (power.charge_state) {
+      case "charging":
+        return ["Charging", `${time} to full`];
+      case "charged":
+        return ["Charged", ""];
+      case "on_hold":
+        return ["Plugged in", "holding to protect the battery"];
+      case "low":
+        return ["Low battery", `${time} left`];
+      case "very_low":
+        return ["Very low", "plug in soon"];
+      default:
+        return ["On battery", `${time} left`];
+    }
   }
 
   // LEARN: one box of the charger ▶ Mac ▶ battery row
@@ -267,23 +288,24 @@
       card.querySelector(".sm-unavailable-reason").textContent = power.reason || "";
       return;
     }
-    card.classList.toggle("charging", power.charging);
-    // plugged in → green; on battery → colour by how low it is
-    const color = power.plugged_in
-      ? "var(--good)"
-      : power.percent <= BATTERY_CRITICAL
-        ? "var(--critical)"
-        : power.percent <= BATTERY_WARN
-          ? "var(--warning)"
-          : "var(--accent)";
+    // dataset.state = "charging" → data-state="charging" → view.css colours
+    card.dataset.state = power.charge_state;
     const [status, time] = describePowerState(power);
-    parts.batteryRing.update(power.percent, color, `${power.percent}%`, power.plugged_in ? "plugged in" : "battery");
+    // the ring reads the card's colour variable straight from CSS
+    parts.batteryRing.update(
+      power.percent,
+      "var(--power-color)",
+      `${power.percent}%`,
+      RING_LABEL_BY_STATE[power.charge_state] ?? "",
+    );
     $(".sm-power-status").textContent = status;
     $(".sm-power-time").textContent = time;
+    $(".sm-low-power-tag").hidden = !power.low_power_mode;
     setFlowBox("charger", power.charger_watts == null ? "—" : `${power.charger_watts} W`, power.plugged_in);
     setFlowBox("in", formatWatts(power.power_in_watts), power.plugged_in);
     setFlowBox("mac", formatWatts(power.mac_watts), true);
     setFlowBox("battery", formatWatts(power.battery_watts, true), true);
+    $('[data-flow="battery"]').classList.toggle("gaining", power.battery_watts > 0);
     C.drawSparkline($(".sm-power-spark"), power.history, {
       ...POWER_SCALE,
       color: "var(--accent)",
@@ -293,6 +315,85 @@
     $(".sm-battery-cycles").textContent = power.cycle_count ?? "—";
     $(".sm-battery-temp").textContent =
       power.temperature_celsius == null ? "—" : `${Math.round(power.temperature_celsius)}°C`;
+  }
+
+  // ---------- this mac ----------
+
+  // 38 → "3 yrs 2 mo", 5 → "5 mo", 12 → "1 yr"
+  function formatMonths(months) {
+    const years = Math.floor(months / 12);
+    const rest = months % 12;
+    const yearText = years ? `${years} yr${years === 1 ? "" : "s"}` : "";
+    const monthText = rest || !years ? `${rest} mo` : "";
+    // filter(Boolean) → drop the empty parts; join → "3 yrs 2 mo"
+    return [yearText, monthText].filter(Boolean).join(" ");
+  }
+
+  // seconds → "3 days 4 h", "5 h 12 min", "8 min"
+  function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (days) return `${days} day${days === 1 ? "" : "s"} ${hours} h`;
+    if (hours) return `${hours} h ${minutes} min`;
+    return `${minutes} min`;
+  }
+
+  // LEARN: place the timeline dots by date
+  //   start = 1 Jan of the model year, end = today
+  //   a date's spot = (date − start) ÷ (today − start) × 100 %
+  //   new Date(…) → a date; subtracting two dates → milliseconds between
+  function placeTimelinePoints(info) {
+    const model = $('[data-point="model"]');
+    const setup = $('[data-point="setup"]');
+    const today = $('[data-point="today"]');
+    const timeline = $(".sm-timeline");
+    // no model year → no timeline at all
+    timeline.hidden = info.model_year == null;
+    if (info.model_year == null) return;
+    const start = new Date(info.model_year, 0, 1);
+    const now = new Date();
+    model.style.left = "0%";
+    model.querySelector("b").textContent = info.model_year;
+    today.style.left = "100%";
+    setup.hidden = !info.setup_date;
+    if (!info.setup_date) return;
+    const setupDate = new Date(info.setup_date);
+    // clamp between 0 and 100 in case the dates are odd
+    const share = Math.min(1, Math.max(0, (setupDate - start) / (now - start)));
+    setup.style.left = `${share * 100}%`;
+    // toLocaleDateString(…) → "Aug 2023"
+    setup.querySelector("b").textContent = setupDate.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+  }
+
+  // "Up 3 days 4 h since last restart" — called on mount and every live refresh
+  function updateUptimeLine() {
+    if (!macInfo || macInfo.boot_time == null) return;
+    // Date.now() → milliseconds since 1970; boot_time is in seconds
+    const seconds = Date.now() / 1000 - macInfo.boot_time;
+    $(".sm-mac-uptime").textContent = `Up ${formatUptime(seconds)} since last restart`;
+  }
+
+  // called by → mount, once per visit; input → MacInfo (models.py)
+  function renderMacCard(info) {
+    macInfo = info;
+    $(".sm-mac-name").textContent = info.model_name ?? "—";
+    $(".sm-mac-specs").textContent =
+      [info.chip, info.memory, info.macos_version && `macOS ${info.macos_version}`].filter(Boolean).join(" · ") || "—";
+    placeTimelinePoints(info);
+    const ages = [];
+    if (info.model_age_years != null) ages.push(`Model ~${info.model_age_years} yrs old`);
+    if (info.months_since_setup != null) ages.push(`set up ${formatMonths(info.months_since_setup)} ago`);
+    $(".sm-mac-ages").textContent = ages.join(" · ");
+    updateUptimeLine();
+    markCardLoaded(".sm-mac");
+  }
+
+  // ask once; a failure leaves "—" and is logged by the shell
+  async function loadMacInfo(generation) {
+    const info = await ctx.call("get_mac_info");
+    if (generation !== mountGeneration || !root) return;
+    renderMacCard(info);
   }
 
   // ---------- top apps ----------
@@ -531,6 +632,7 @@
         renderMemoryCard(stats.memory);
         renderTemperatureCard(stats.temperature);
         renderPowerCard(stats.power);
+        updateUptimeLine();
       });
       if (prefs.cpu_top_apps_open || prefs.memory_top_apps_open) {
         const top = await ctx.call("get_top_apps", { limit: prefs.top_apps_count });
@@ -593,6 +695,7 @@
     ctx = context;
     topRows = { cpu: new Map(), memory: new Map() };
     storageView = null;
+    macInfo = null;
     root.querySelectorAll("[data-icon]").forEach((el) => {
       el.innerHTML = I.svg(el.dataset.icon, el.classList.contains("sm-unavailable-icon") ? 28 : 14);
     });
@@ -611,6 +714,7 @@
     // setProperty("--x", v) → set a CSS variable from JS (used in view.css)
     $(".sm").style.setProperty("--sm-top-count", prefs.top_apps_count);
     applyTopListOpenState();
+    loadMacInfo(generation);
     root.addEventListener("click", onTopToggleClick);
     mounted = true;
     // LEARN: if the window was hidden while mount was waiting, the timers stay
