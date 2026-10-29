@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks power.py with a fake battery entry
 #   (no real ioreg call, works the same on a Mac with no battery)
-#   read next → tests/test_system_monitor_top_apps.py
+#   read next → tests/test_system_monitor_mac_info.py
 import subprocess
 from typing import Any
 
@@ -11,6 +11,7 @@ from app.tools.system_monitor import power
 from app.tools.system_monitor.power import (
     PowerReader,
     build_power_stats,
+    classify_charge_state,
     parse_battery_registry,
     to_signed_64_bit,
 )
@@ -99,6 +100,33 @@ class TestSystemMonitorPowerBuildPowerStats:
         assert stats.power_in_watts is None
 
 
+class TestSystemMonitorPowerClassifyChargeState:
+    def test_system_monitor_power_classify_charge_state_plugged_in(
+        self, fake_battery_registry: dict[str, Any]
+    ) -> None:
+        def state_for(**changes: Any) -> str:
+            raw = {**fake_battery_registry, **changes}
+            return classify_charge_state(parse_battery_registry(raw))
+
+        assert state_for() == "charging"
+        assert state_for(IsCharging=False, FullyCharged=True) == "charged"
+        assert state_for(IsCharging=False, CurrentCapacity=99) == "charged"
+        # plugged in at 80 %, not charging → macOS is holding it there
+        assert state_for(IsCharging=False, CurrentCapacity=80) == "on_hold"
+
+    def test_system_monitor_power_classify_charge_state_on_battery(
+        self, fake_battery_registry: dict[str, Any]
+    ) -> None:
+        def state_at(percent: int) -> str:
+            raw = {**unplug(fake_battery_registry, amperage=-900)}
+            raw["CurrentCapacity"] = percent
+            return classify_charge_state(parse_battery_registry(raw))
+
+        assert state_at(50) == "on_battery"
+        assert state_at(20) == "low"
+        assert state_at(10) == "very_low"
+
+
 class TestSystemMonitorPowerReader:
     def test_system_monitor_power_reader_no_battery_unavailable(
         self, monkeypatch: pytest.MonkeyPatch
@@ -129,6 +157,7 @@ class TestSystemMonitorPowerReader:
         monkeypatch.setattr(
             power, "read_battery_registry", lambda: fake_battery_registry
         )
+        monkeypatch.setattr(power, "read_low_power_mode", lambda: True)
         reader = PowerReader()
 
         reader.read_power_stats()
@@ -136,3 +165,5 @@ class TestSystemMonitorPowerReader:
 
         assert stats.available
         assert stats.history == [8.6, 8.6]
+        assert stats.low_power_mode
+        assert stats.charge_state == "charging"

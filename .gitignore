@@ -20,5 +20,7 @@ htmlcov/
 .env
 state.json
 state.json.bad
+# temporary folder make_icon.py builds the .icns from
+mac_app/icon/AppIcon.iconset/
 logs/
 .instance.sock

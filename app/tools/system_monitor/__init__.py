@@ -15,6 +15,7 @@ LEARN: this file is the tool's "front desk"; the readers do the real work
   get_live_stats ──▶ CpuMemoryReader + TemperatureMonitor + PowerReader
   get_top_apps   ──▶ TopAppsReader
   get_storage    ──▶ StorageReader
+  get_mac_info   ──▶ MacInfoReader (once per visit)
 """
 
 from pathlib import Path
@@ -24,7 +25,8 @@ from pydantic import BaseModel, Field
 
 from app.tools.base import Tool, ToolInfo
 from app.tools.system_monitor.cpu_memory import CpuMemoryReader
-from app.tools.system_monitor.models import LiveStats, StorageStats, TopApps
+from app.tools.system_monitor.mac_info import MacInfoReader
+from app.tools.system_monitor.models import LiveStats, MacInfo, StorageStats, TopApps
 from app.tools.system_monitor.power import PowerReader
 from app.tools.system_monitor.storage import StorageReader
 from app.tools.system_monitor.temperature import TemperatureMonitor
@@ -88,7 +90,9 @@ class SystemMonitorTool(Tool):
     )
     settings_model = SystemMonitorSettings
     # the ONLY methods the page may call; anything else is refused
-    actions = frozenset({"get_live_stats", "get_top_apps", "get_storage"})
+    actions = frozenset(
+        {"get_live_stats", "get_top_apps", "get_storage", "get_mac_info"}
+    )
     # LEARN: Path(__file__) = this file's own location
     #   .parent / "ui" → the ui folder next to it (view.html / .css / .js)
     ui_dir = Path(__file__).parent / "ui"
@@ -98,6 +102,7 @@ class SystemMonitorTool(Tool):
         self._cpu_memory = CpuMemoryReader()
         self._temperature = TemperatureMonitor()
         self._power = PowerReader()
+        self._mac_info = MacInfoReader()
         self._top_apps = TopAppsReader()
         self._storage = StorageReader()
 
@@ -118,3 +123,7 @@ class SystemMonitorTool(Tool):
     def get_storage(self) -> StorageStats:
         # called every 30 s
         return self._storage.read_storage_stats()
+
+    def get_mac_info(self) -> MacInfo:
+        # called once each time the page opens (the values don't change)
+        return self._mac_info.read_mac_info()

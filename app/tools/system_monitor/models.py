@@ -20,6 +20,7 @@ LEARN: the field names here = the names the page's JavaScript uses
              └─ power: PowerStats
   TopApps ── by_cpu / by_memory: [AppUsage, …]
   StorageStats ── drives: [DriveUsage, …]
+  MacInfo ── model, chip, memory, macOS, ages (read once per visit)
 """
 
 from typing import Literal
@@ -30,6 +31,10 @@ from pydantic import BaseModel
 #   "P" = performance core, "E" = efficiency core, "?" = unknown
 type CoreKind = Literal["P", "E", "?"]
 type DriveKind = Literal["main", "external", "network", "image"]
+# what the battery is doing → the Power card's colour (see power.py)
+type ChargeState = Literal[
+    "charging", "charged", "on_hold", "on_battery", "low", "very_low"
+]
 
 
 # LEARN: class X(BaseModel) → X inherits pydantic's checking and JSON powers
@@ -98,9 +103,13 @@ class PowerStats(BaseModel):
     minutes_remaining → to full (charging) or to empty (on battery);
       None while macOS is still estimating
     history = recent mac_watts → the card's sparkline
+    charge_state → one word for the card's colour and labels
+    low_power_mode → macOS Low Power Mode is on (a yellow tag on the card)
     """
 
     available: bool
+    charge_state: ChargeState | None = None
+    low_power_mode: bool = False
     reason: str | None = None
     percent: int | None = None
     plugged_in: bool = False
@@ -172,3 +181,27 @@ class StorageStats(BaseModel):
     """LEARN: all drives, already sorted (main disk first)."""
 
     drives: list[DriveUsage]
+
+
+class MacInfo(BaseModel):
+    """
+    LEARN: the This Mac card (values that don't change while the app runs)
+
+    any value macOS didn't give → None → the card shows "—"
+    model_year → from the model name: "MacBook Pro (14-inch, 2021)" → 2021
+    setup_date → "2023-08-04" (ISO date text), when macOS was first set up
+      (or last installed fresh)
+    boot_time → seconds since 1 Jan 1970 when the Mac last started
+      (industry term: "Unix timestamp"); the page counts the uptime from it
+    """
+
+    model_name: str | None = None
+    model_identifier: str | None = None
+    chip: str | None = None
+    memory: str | None = None
+    macos_version: str | None = None
+    model_year: int | None = None
+    model_age_years: int | None = None
+    setup_date: str | None = None
+    months_since_setup: int | None = None
+    boot_time: float | None = None

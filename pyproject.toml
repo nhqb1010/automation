@@ -34,6 +34,7 @@ required-version = ">=0.13.4"
 # only needed while developing (tests, lint), not to run the app
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.22.3",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
     "uv>=0.13.4",

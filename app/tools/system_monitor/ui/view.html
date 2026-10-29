@@ -17,9 +17,9 @@
      ┌ CPU ──────────┬ Memory ───────┬ Temperature ──┐
      │ ring + cores  │ ring + swap   │ 2 gauges      │
      │ top apps ▸    │ top apps ▸    │ line chart    │
-     ├ Power ────────┴───────────────┴───────────────┤
-     │ battery ring · charger ▶ Mac ▶ battery watts  │
-     ├ Storage ──────────────────────────────────────┤
+     ├ Power ────────────────────────┬ This Mac ─────┤
+     │ battery ring · watts flow     │ model, ages   │
+     ├ Storage ──────────────────────┴───────────────┤
      │ one ring per drive                            │
      └───────────────────────────────────────────────┘ -->
 <div class="sm">
@@ -95,6 +95,7 @@
             <span class="sm-power-bolt" data-icon="zap"></span>
             <b class="sm-power-status">—</b>
             <span class="sm-power-time"></span>
+            <span class="sm-low-power-tag" hidden>Low Power Mode</span>
           </div>
           <div class="sm-power-flow">
             <div class="sm-flow-box" data-flow="charger"><span>Charger</span><b class="num">—</b></div>
@@ -118,6 +119,21 @@
         <div>Power info unavailable</div>
         <div class="sm-unavailable-reason"></div>
       </div>
+    </section>
+
+    <!-- model, chip, ages; the timeline dots are placed by view.js -->
+    <section class="card loading sm-mac">
+      <div class="card-title"><span data-icon="laptop"></span>This Mac</div>
+      <div class="sm-mac-name">—</div>
+      <div class="stat-line sm-mac-specs"></div>
+      <div class="sm-timeline">
+        <div class="sm-timeline-track"></div>
+        <div class="sm-timeline-point" data-point="model"><i></i><b class="num"></b><span>model out</span></div>
+        <div class="sm-timeline-point" data-point="setup"><i></i><b class="num"></b><span>set up</span></div>
+        <div class="sm-timeline-point" data-point="today"><i></i><b>today</b><span></span></div>
+      </div>
+      <div class="stat-line sm-mac-ages"></div>
+      <div class="stat-line sm-mac-uptime"></div>
     </section>
 
     <section class="card loading sm-storage">

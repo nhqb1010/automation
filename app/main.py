@@ -7,8 +7,9 @@ Builds the window and starts the app.
 
 LEARN: startup order (each step = one file you can open)
 
-  settings      config.py         read .env
-  logging       logging_setup.py  open logs/app.log
+  settings      config.py         read .env (dev copy only)
+  version       build_info.py     which version is running
+  logging       logging_setup.py  open app.log
   one copy?     single_instance   already running → bring it forward, quit
   saved state   state.py          window size, sidebar, user settings
   tools         tools/__init__    make every tool (readers start here)
@@ -33,9 +34,10 @@ from AppKit import NSApplication
 from PyObjCTools import AppHelper
 
 from app.bridge import AppBridge
+from app.build_info import format_build_label, load_build_info
 from app.config import AppSettings
 from app.logging_setup import configure_app_logging
-from app.paths import INSTANCE_SOCKET, STATE_FILE, UI_DIR
+from app.paths import DATA_DIR, INSTANCE_SOCKET, STATE_FILE, UI_DIR, is_installed_app
 from app.preferences import PreferencesService
 from app.single_instance import SingleInstanceGuard
 from app.state import (
@@ -50,6 +52,8 @@ from app.tools import build_tool_registry
 logger = logging.getLogger(__name__)
 
 APP_TITLE = "Bao Internal Apps"
+# the dev copy says so in its title bar → easy to tell the two windows apart
+DEV_TITLE_SUFFIX = " (dev)"
 # colour shown before the page has loaded (matches the dark theme → no flash)
 WINDOW_BACKGROUND = "#121211"
 
@@ -63,7 +67,12 @@ def run_internal_apps() -> None:
     """
     settings = AppSettings()
     log_file = configure_app_logging(settings)
-    logger.info(f"Starting {APP_TITLE} {log_file=}")
+    installed = is_installed_app()
+    build_info = load_build_info(is_installed=installed)
+    build_label = format_build_label(build_info)
+    logger.info(f"Starting {APP_TITLE} {build_label} {installed=} {log_file=}")
+    # the installed app's data folder doesn't exist on its very first start
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     # already running? → ask that copy to come forward, then stop here
     guard = SingleInstanceGuard(INSTANCE_SOCKET)
@@ -78,6 +87,7 @@ def run_internal_apps() -> None:
         tools=tools,
         preferences=PreferencesService(store=store, tools=tools),
         store=store,
+        build_info=build_info,
     )
     # reopen where it was last time, if that spot is still on a screen
     geometry = choose_window_geometry(
@@ -86,7 +96,12 @@ def run_internal_apps() -> None:
         default_size=(settings.default_window_width, settings.default_window_height),
         min_size=(settings.min_window_width, settings.min_window_height),
     )
-    window = create_main_window(geometry=geometry, bridge=bridge, settings=settings)
+    window = create_main_window(
+        title=APP_TITLE if installed else APP_TITLE + DEV_TITLE_SUFFIX,
+        geometry=geometry,
+        bridge=bridge,
+        settings=settings,
+    )
 
     # LEARN: events.closing += f → "when the window is closing, call f"
     #   (+= adds a listener; industry term: "event handler")
@@ -112,7 +127,7 @@ def run_internal_apps() -> None:
 
 
 def create_main_window(
-    geometry: WindowGeometry, bridge: AppBridge, settings: AppSettings
+    title: str, geometry: WindowGeometry, bridge: AppBridge, settings: AppSettings
 ) -> webview.Window:
     """
     LEARN: open the app window
@@ -124,7 +139,7 @@ def create_main_window(
     the page's JavaScript as window.pywebview.api.<method>(…)
     """
     window = webview.create_window(
-        APP_TITLE,
+        title,
         url=str(UI_DIR / "index.html"),
         js_api=bridge,
         width=geometry.width,

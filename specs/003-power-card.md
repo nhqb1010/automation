@@ -33,6 +33,10 @@ See whether the Mac is charging and how many watts are flowing: from the charger
   - Sparkline of Mac power use on a fixed 0–100 W scale; health, cycles and battery temperature on the side.
 - **Files:** app/tools/system_monitor/ui/view.html, app/tools/system_monitor/ui/view.css, app/tools/system_monitor/ui/view.js, app/ui/icons.js
 
+### 2b. Colours by charge state (added 2026-10-30)
+- **Approach:** One state from Python drives the card's colour, ring label and status line: charging green (pulsing), charged teal, on hold blue (plugged in, macOS holding the charge), on battery grey, low amber (20 % or less), very low red (10 % or less, pulsing). The status text, charging bolt and title icon share the ring colour. A yellow "Low Power Mode" tag shows when macOS Low Power Mode is on. Battery watts turn green while charging. Pulsing stops with Reduce Motion.
+- **Files:** app/tools/system_monitor/power.py, app/tools/system_monitor/models.py, app/tools/system_monitor/ui/view.html, app/tools/system_monitor/ui/view.css, app/tools/system_monitor/ui/view.js, app/ui/style.css, tests/test_system_monitor_power.py
+
 ### 3. Tests
 - **Approach:** Parsing while charging and unplugged, the negative current fix, the "estimating" time value, watts maths, no battery, a failed read, and the sparkline history.
 - **Files:** tests/test_system_monitor_power.py, tests/conftest.py

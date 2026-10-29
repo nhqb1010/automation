@@ -2,7 +2,7 @@
 //   shell.js runs THIS FILE on first open ▶ it registers mount / unmount
 //   ▶ every second it asks Python for new lines (bridge call ▶
 //   log_viewer/__init__.py ▶ reader.py) ▶ adds them to the list
-//   read next → tests/conftest.py
+//   read next → mac_app/bao_internal_apps.spec
 
 // Logs page: follows logs/app.log live, with level filters and search.
 //

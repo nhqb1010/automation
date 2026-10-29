@@ -6,6 +6,7 @@ import logging
 import pytest
 
 from app.bridge import AppBridge
+from app.build_info import BuildInfo
 from app.preferences import PreferencesService
 from app.state import StateStore
 from app.tools.base import UnknownToolActionError
@@ -19,6 +20,12 @@ def bridge(state_store: StateStore, dummy_tool: DummyTool) -> AppBridge:
         tools=tools,
         preferences=PreferencesService(store=state_store, tools=tools),
         store=state_store,
+        build_info=BuildInfo(
+            version="1.2.3",
+            built_at="2026-10-29T22:40:00",
+            commit="abc1234",
+            is_dev=False,
+        ),
     )
 
 
@@ -65,6 +72,14 @@ class TestAppBridgeUiState:
         assert bridge.get_ui_state() == {
             "sidebar_collapsed": True,
             "last_tool": "dummy",
+        }
+
+
+class TestAppBridgeAppInfo:
+    def test_app_bridge_app_info_label(self, bridge: AppBridge) -> None:
+        assert bridge.get_app_info() == {
+            "label": "Version 1.2.3 · built 29 Oct 22:40 · abc1234",
+            "is_dev": False,
         }
 
 

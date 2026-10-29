@@ -15,6 +15,8 @@ Temperature         ── SMC keys Tp / Te / Tg (ctypes + IOKit)
                          └─ fallback: IOHID "PMU tdie" sensors ──▶ "Chip"
 Battery, charger    ── ioreg AppleSmartBattery (plist, no password)
                          └─ watts = volts × amps; charger watts from telemetry
+Model, chip, ages   ── ioreg product-name + system_profiler + setup date
+                         └─ read once, kept; uptime from psutil.boot_time
 Storage             ── psutil mounts ──▶ NSURL volume values (Finder numbers)
                          └─ each drive read on its own thread, one shared 2 s limit
 ```
@@ -25,7 +27,8 @@ Storage             ── psutil mounts ──▶ NSURL volume values (Finder n
 view.js timer
   ├─ get_live_stats ──▶ CpuMemoryReader + TemperatureMonitor + PowerReader ──▶ LiveStats
   ├─ get_top_apps   ──▶ TopAppsReader (only while a list is open) ──▶ TopApps
-  └─ get_storage    ──▶ StorageReader (every 30 s) ──▶ StorageStats
+  ├─ get_storage    ──▶ StorageReader (every 30 s) ──▶ StorageStats
+  └─ get_mac_info   ──▶ MacInfoReader (once per visit) ──▶ MacInfo
 ```
 
 ## Glossary
@@ -41,6 +44,8 @@ view.js timer
 | ctypes | Calls C functions in a system library directly from Python |
 | PyObjC | Calls Objective C classes (AppKit, Foundation) from Python |
 | purgeable space | Space macOS can free on demand (caches); Finder counts it as free |
+| Unix timestamp | Seconds since 1 Jan 1970; how boot time is passed to the page |
+| memoization | Keep a value that can't change instead of asking again |
 | ioreg | macOS tool that lists hardware entries and their live values |
 | two's complement | How negative numbers are stored; ioreg can show them as huge positives |
 | rolling window | Keep only the last 60 s of values (recent_values.py) |

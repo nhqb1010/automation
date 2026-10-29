@@ -153,18 +153,55 @@
 .sm-temperature.unavailable .sm-unavailable { display: block; }
 
 /* power
-   3-column window → the card spans the full width (a strip under the others)
+   3-column window → spans 2 columns, This Mac takes the 3rd
    2 / 1 columns   → a normal card next to Temperature (rule further down)
    flow boxes wrap onto a 2nd line when the card is narrow */
-.sm-power { grid-column: 1 / -1; }
+/* span 2 → take two columns, wherever the row starts */
+.sm-power { grid-column: span 2; }
 .sm-power-body { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .sm-power-main { flex: 1; min-width: 240px; }
 .sm-power-state { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .sm-power-state b { font-weight: 600; }
 .sm-power-time { color: var(--text-muted); font-size: 12px; }
-.sm-power-bolt { display: none; color: var(--good); }
+.sm-power-bolt { display: none; color: var(--power-color); }
 .sm-power-bolt svg { width: 14px; height: 14px; }
-.sm-power.charging .sm-power-bolt { display: grid; }
+.sm-power[data-state="charging"] .sm-power-bolt { display: grid; }
+
+/* LEARN: one colour per charge state, set ONCE on the card as a CSS variable
+   view.js sets data-state="charging" (etc.) on the card → the matching rule
+   below picks --power-color → ring, status text, ⚡ and title icon all use it
+     charging green · charged teal · on hold blue · on battery grey
+     low amber · very low red */
+.sm-power { --power-color: var(--text-secondary); }
+.sm-power[data-state="charging"] { --power-color: var(--good); }
+.sm-power[data-state="charged"] { --power-color: var(--charged); }
+.sm-power[data-state="on_hold"] { --power-color: var(--accent); }
+.sm-power[data-state="on_battery"] { --power-color: var(--text-secondary); }
+.sm-power[data-state="low"] { --power-color: var(--warning); }
+.sm-power[data-state="very_low"] { --power-color: var(--critical); }
+.sm-power .card-title [data-icon],
+.sm-power-status { color: var(--power-color); transition: color 0.4s; }
+
+/* charging and very low → the ring gently fades in and out
+   (switched off by "Reduce motion", see style.css) */
+@keyframes sm-power-pulse { 50% { opacity: 0.55; } }
+.sm-power[data-state="charging"] .sm-battery-ring .arc,
+.sm-power[data-state="very_low"] .sm-battery-ring .arc { animation: sm-power-pulse 2.4s ease-in-out infinite; }
+
+/* "+42 W" into the battery while charging → green; draining stays plain */
+.sm-flow-box.gaining b { color: var(--good); }
+
+.sm-low-power-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+
+.sm-low-power-tag[hidden] { display: none; }
 .sm-power-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .sm-flow-box {
   display: flex;
@@ -187,7 +224,29 @@
 
 @container (max-width: 960px) {
   .sm-power { grid-column: auto; }
+  /* 2 columns → This Mac becomes a full-width strip under Power */
+  .sm-mac { grid-column: 1 / -1; }
 }
+
+/* this mac */
+.sm-mac-name { font-size: 15px; font-weight: 650; }
+.sm-mac-specs { margin-top: 2px; }
+
+/* LEARN: the timeline
+   track = a thin line across; each point is placed with left: N% by view.js
+   transform: translateX(-50%) → the point's middle sits on that spot
+   the first / last labels hug their edges so they never stick out */
+.sm-timeline { position: relative; height: 58px; margin: 18px 6px 4px; }
+.sm-timeline-track { position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--track); border-radius: 1px; }
+.sm-timeline-point { position: absolute; top: 0; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; font-size: 11px; white-space: nowrap; }
+.sm-timeline-point[data-point="model"] { align-items: flex-start; transform: none; }
+.sm-timeline-point[data-point="today"] { align-items: flex-end; transform: translateX(-100%); }
+.sm-timeline-point i { width: 12px; height: 12px; border-radius: 50%; background: var(--surface-1); border: 2px solid var(--text-muted); }
+.sm-timeline-point[data-point="setup"] i { border-color: var(--accent); background: var(--accent); }
+.sm-timeline-point[data-point="today"] i { border-color: var(--text-primary); }
+.sm-timeline-point b { margin-top: 6px; color: var(--text-primary); font-weight: 600; }
+.sm-timeline-point span { color: var(--text-muted); }
+.sm-timeline-point[hidden] { display: none; }
 
 /* storage
    flex-wrap: wrap → drives flow onto the next line when the row is full
