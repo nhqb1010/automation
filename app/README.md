@@ -1,4 +1,6 @@
 <!-- LEARN-README -->
+start here → [\_\_main\_\_.py](__main__.py), then follow each file's "read next"
+
 # app/
 
 The Python side: window, bridge, settings, state, tools.
@@ -15,7 +17,7 @@ __main__ ──▶ main.run_internal_apps()
                ├─ logging_setup  logs/app.log, rotating, crash hook
                ├─ single_instance  already running? ──▶ focus it, quit
                ├─ state          state.json ──▶ window, ui, preferences
-               ├─ tools          registry ──▶ [SystemMonitorTool]
+               ├─ tools          registry ──▶ [SystemMonitorTool, LogViewerTool]
                ├─ bridge         the object the page can call
                └─ webview.start  window + macOS event loop (blocks)
 ```
@@ -42,3 +44,5 @@ view.js ◀───────────── JSON ◀── model_dump ◀
 | atomic write | Write a temp file, then rename it over the old one in one step |
 | Unix socket | A file-shaped endpoint for two local processes to talk |
 | excepthook | Python hook that runs for any error nobody caught |
+| allowlist | Only names on a fixed list may run (the tool's actions) |
+| schema-driven UI | The Settings page is drawn from each settings model, no page code per tool |

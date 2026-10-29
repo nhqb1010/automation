@@ -1,10 +1,27 @@
+// LEARN: YOU ARE HERE
+//   index.html loads THIS FILE first ▶ sets window.BaoIcons
+//   ▶ shell.js, settings.js and tool pages call BaoIcons.svg("cpu")
+//   read next → app/ui/charts.js
+
 // Inline Lucide icons (ISC licence), so nothing loads from the internet.
 // LEARN: each icon is just SVG path data; one helper wraps it in an <svg> tag.
+//   SVG = pictures written as text (lines, circles), sharp at any size
+
+// LEARN: (() => { … })() = run this block once, right now
+//   industry term: "IIFE" (immediately invoked function expression)
+//   why → names inside (paths, svg) stay private to this file
+//   only what's put on window.… is visible to other files
+//   ≈ a Python module that exports one name
+//   () => { … } = an "arrow function" = a short way to write a function
 (() => {
+  // LEARN: const = a name that can't be pointed at something else later
+  //   { key: value, … } = an object ≈ a Python dict
+  //   '…' and "…" are both plain strings in JS
   const paths = {
     activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
     settings:
       '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    // a key with a dash needs quotes ("panel-left"); plain words don't
     "panel-left": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
     "chevron-right": '<path d="m9 18 6-6-6-6"/>',
     "hard-drive":
@@ -21,12 +38,29 @@
     alert:
       '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     reset: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    // used by the Logs tool: sidebar icon, search box, pause, jump to newest
+    "scroll-text":
+      '<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+    search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+    "arrow-down-to-line": '<path d="M12 17V3"/><path d="m6 11 6 6 6-6"/><path d="M19 21H5"/>',
   };
 
+  // LEARN: one icon as an <svg> text string
+  //   called by → shell.js, settings.js, tool pages
+  //   gives back → HTML text, put on the page with innerHTML
+  //   size = 18 → default value when the caller leaves it out (like Python)
   function svg(name, size = 18) {
+    // LEARN: a || b → a if it exists, else b ≈ Python "a or b"
+    //   unknown name → the "activity" icon instead of nothing
     const body = paths[name] || paths.activity;
+    // LEARN: `…${x}…` = template string ≈ Python f"…{x}…"
+    //   stroke="currentColor" → the icon takes the text colour around it
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
   }
 
+  // LEARN: window = the page's global object; anything put on it can be used
+  //   by every script on the page → this is how the files share code here
+  //   { svg } = short for { svg: svg }
   window.BaoIcons = { svg };
 })();

@@ -60,7 +60,7 @@ A lightweight desktop app (pywebview window, no browser) that hosts many interna
 
 ### 3. CPU and RAM usage
 - **Approach:** psutil for total and per-core CPU % (primed at start since the first read is 0), load average, RAM total/used/available/% and swap. P/E core counts read from macOS (this machine: 6 Performance, 2 Efficiency) and labelled per core column. A rolling buffer keeps about 60 seconds of CPU % and RAM % in memory. Pydantic models describe everything sent to the page.
-- **Files:** app/tools/system_monitor/__init__.py, app/tools/system_monitor/cpu_memory.py, app/tools/system_monitor/history.py, app/tools/system_monitor/models.py
+- **Files:** app/tools/system_monitor/__init__.py, app/tools/system_monitor/cpu_memory.py, app/tools/system_monitor/recent_values.py, app/tools/system_monitor/models.py
 - **Concerns:** Efficiency cores are listed first (cores 0-1), verified on this machine through each core's cluster type in the macOS device tree; if the counts do not add up on another Mac, cores get neutral labels instead. RAM % will be close to but not identical to Activity Monitor.
 - **Decisions:**
   - P/E labels → yes
@@ -69,7 +69,7 @@ A lightweight desktop app (pywebview window, no browser) that hosts many interna
 
 ### 4. Top apps by CPU and RAM
 - **Approach:** psutil process scan with process objects kept between refreshes (per-process CPU needs two reads). Each process is grouped under the outermost .app folder in its path; CPU and RAM summed per app; processes outside any .app keep their own name. No child rows. App icons fetched once via macOS's icon API (PyObjC), drawn into a 64 px bitmap (about 10 KB each instead of nearly 1 MB at full size) and cached. Per-app rolling history for sparklines, pruned when an app leaves the top N. The scan runs only while the list is expanded. CPU is shown as a share of the whole CPU (0-100%).
-- **Files:** app/tools/system_monitor/top_apps.py, app/tools/system_monitor/app_icons.py, app/tools/system_monitor/models.py, app/tools/system_monitor/history.py
+- **Files:** app/tools/system_monitor/top_apps.py, app/tools/system_monitor/app_icons.py, app/tools/system_monitor/models.py, app/tools/system_monitor/recent_values.py
 - **Concerns:** some system processes (e.g. kernel_task, WindowServer) refuse access without admin rights and are skipped quietly; RAM per app differs slightly from Activity Monitor; apps closing mid-read are skipped.
 - **Decisions:**
   - Group by app, no child rows → yes
@@ -113,7 +113,7 @@ A lightweight desktop app (pywebview window, no browser) that hosts many interna
 ### 8. Tests
 - **Approach:** each data module is split into a thin "read from macOS" part and a pure "shape and calculate" part; tests feed fake raw data into the calculating part. Shared fakes in tests/conftest.py (psutil results, process list with Chrome helpers, a vanishing process and an access-denied process, sensor readings including junk values, drives of every kind including an unresponsive network drive). Settings and state tests use pytest's temporary folder. Bridge tested with a dummy tool. pywebview is imported only by app/main.py, which no test imports, so tests never open a window.
   - Covered: CPU/RAM maths and P/E labels; app grouping, sorting, top-N, vanished processes; temperature name sorting, junk filtering and unavailable fallback; storage filtering, kinds and % maths; preferences save/load, invalid values, corrupted file; window state off-screen fallback; bridge rejects unknown tools and actions; .env settings.
-- **Files:** tests/conftest.py, tests/test_system_monitor_cpu_memory.py, tests/test_system_monitor_history.py, tests/test_system_monitor_top_apps.py, tests/test_system_monitor_temperature.py, tests/test_system_monitor_storage.py, tests/test_app_preferences.py, tests/test_app_state.py, tests/test_app_config.py, tests/test_app_bridge.py (named per the unit test naming rules: one shared class prefix per file); ruff.toml allows assert and literal values in tests
+- **Files:** tests/conftest.py, tests/test_system_monitor_cpu_memory.py, tests/test_system_monitor_recent_values.py, tests/test_system_monitor_top_apps.py, tests/test_system_monitor_temperature.py, tests/test_system_monitor_storage.py, tests/test_app_preferences.py, tests/test_app_state.py, tests/test_app_config.py, tests/test_app_bridge.py (named per the unit test naming rules: one shared class prefix per file); ruff.toml allows assert and literal values in tests
 - **Concerns:** fakes can drift from real macOS/psutil data; accepted, since a broken temperature read is visible in the app and the log.
 - **Decisions:**
   - Live tests against real hardware → no, overkill

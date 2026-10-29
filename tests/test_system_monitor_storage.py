@@ -1,4 +1,10 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks storage.py (which drives show, slow drives)
+#   read next → tests/test_log_viewer_reader.py
 import logging
+
+# LEARN: plistlib = read / write Apple's "property list" format (plist)
+#   hdiutil (the disk image tool) answers in plist
 import plistlib
 import threading
 import time
@@ -60,6 +66,7 @@ class TestSystemMonitorStorageClassifyDriveKind:
     def test_system_monitor_storage_classify_drive_kind_each_kind(self) -> None:
         images = {"/Volumes/Installer"}
 
+        # MountedVolume("/", "apfs") = mountpoint, file system type (by position)
         assert classify_drive_kind(MountedVolume("/", "apfs"), images) == "main"
         assert (
             classify_drive_kind(MountedVolume("/Volumes/NAS", "smbfs"), images)
@@ -130,6 +137,7 @@ class TestSystemMonitorStorageSortDrivesForDisplay:
 
 class TestSystemMonitorStorageParseDiskImageMountpoints:
     def test_system_monitor_storage_parse_disk_image_mountpoints(self) -> None:
+        # build fake hdiutil output: one image mounted, one not
         raw = plistlib.dumps(
             {
                 "images": [
@@ -150,6 +158,13 @@ class TestSystemMonitorStorageParseDiskImageMountpoints:
 def patch_drives_with_hung_shares(
     monkeypatch: pytest.MonkeyPatch, hung_count: int, release: threading.Event
 ) -> None:
+    """
+    LEARN: pretend some network shares hang (like an unplugged NAS)
+
+    used by → the StorageReader tests below
+    the main disk answers at once; each share waits until "release" is set
+    threading.Event = a flag threads can wait on: wait() blocks, set() frees
+    """
     hung = [f"/Volumes/NAS{index}" for index in range(hung_count)]
 
     def read_details_hanging_on_shares(mountpoint: str) -> VolumeDetails:
@@ -163,13 +178,17 @@ def patch_drives_with_hung_shares(
         "read_mounted_volumes",
         lambda: [
             MountedVolume("/", "apfs"),
+            # *( … ) → spread every item of the generator into this list
             *(MountedVolume(mountpoint, "smbfs") for mountpoint in hung),
         ],
     )
+    # set → calling set() gives an empty set → "no disk images"
     monkeypatch.setattr(storage, "read_disk_image_mountpoints", set)
     monkeypatch.setattr(storage, "read_volume_details", read_details_hanging_on_shares)
 
 
+# run the test's action, then ALWAYS free the hanging threads (finally),
+# so no thread is left waiting after the test
 def run_with_release(release: threading.Event, action: Callable[[], None]) -> None:
     try:
         action()
@@ -184,6 +203,7 @@ class TestSystemMonitorStorageReader:
         release = threading.Event()
         patch_drives_with_hung_shares(monkeypatch, hung_count=1, release=release)
         drives = []
+        # lambda: … → the action as a tiny function; extend → add all drives
         run_with_release(
             release,
             lambda: drives.extend(

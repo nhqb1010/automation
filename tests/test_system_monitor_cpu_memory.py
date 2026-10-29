@@ -1,3 +1,10 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks cpu_memory.py's pure maths (no real Mac needed)
+#   read next → tests/test_system_monitor_recent_values.py
+
+# LEARN: only the "build / calculate / label" functions are tested
+#   they take plain numbers in, give results out ("pure functions")
+#   → the parts that read the real Mac stay thin and untested here
 from app.tools.system_monitor.cpu_memory import (
     CoreLayout,
     MemoryReading,
@@ -13,6 +20,7 @@ class TestSystemMonitorCpuMemoryLabelCoreKinds:
     def test_system_monitor_cpu_memory_label_core_kinds_efficiency_first(self) -> None:
         layout = CoreLayout(performance_cores=6, efficiency_cores=2)
 
+        # ["P"] * 6 → ["P", "P", "P", "P", "P", "P"]
         assert label_core_kinds(core_count=8, layout=layout) == ["E", "E"] + ["P"] * 6
 
     def test_system_monitor_cpu_memory_label_core_kinds_neutral_on_mismatch(
@@ -20,6 +28,7 @@ class TestSystemMonitorCpuMemoryLabelCoreKinds:
     ) -> None:
         layout = CoreLayout(performance_cores=6, efficiency_cores=2)
 
+        # 6 + 2 ≠ 10 → the layout can't be trusted → "?" for every core
         assert label_core_kinds(core_count=10, layout=layout) == ["?"] * 10
 
 
@@ -62,6 +71,7 @@ class TestSystemMonitorCpuMemoryBuildMemoryStats:
 
         stats = build_memory_stats(reading=reading, history=[])
 
+        # used = total − available = 16 000 − 6 000
         assert stats.used_bytes == 10_000
         assert stats.percent == 62.5
         assert stats.swap_used_bytes == 1_200

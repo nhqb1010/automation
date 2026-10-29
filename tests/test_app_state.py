@@ -1,14 +1,20 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks app/state.py (state.json, window placement)
+#   read next → tests/test_app_preferences.py
 import json
 from pathlib import Path
 
 from app.state import ScreenArea, StateStore, WindowState, choose_window_geometry
 
+# a 14" MacBook screen; sizes as (width, height)
 MAIN_SCREEN = ScreenArea(x=0, y=0, width=1512, height=982)
 DEFAULT_SIZE = (1000, 680)
 MIN_SIZE = (720, 480)
 
 
 class TestAppStateStore:
+    # LEARN: "round trip" (industry term) = save, load again, get the same back
+    #   two separate StateStore objects → it really came from the file
     def test_app_state_store_window_state_round_trip(self, tmp_path: Path) -> None:
         path = tmp_path / "state.json"
         StateStore(path).save_window_state(
@@ -21,6 +27,7 @@ class TestAppStateStore:
 
     def test_app_state_store_unreadable_file_set_aside(self, tmp_path: Path) -> None:
         path = tmp_path / "state.json"
+        # broken file → defaults, and the file is moved to state.json.bad
         path.write_text("{ not json")
 
         state = StateStore(path).read_app_state()
@@ -34,6 +41,8 @@ class TestAppStateStore:
     ) -> None:
         path = tmp_path / "state.json"
         path.write_text(
+            # json.dumps(dict) → JSON text; "maybe" is not a bool → only that
+            # one field resets, last_tool survives
             json.dumps(
                 {"ui": {"sidebar_collapsed": "maybe", "last_tool": "system_monitor"}}
             )
@@ -51,6 +60,7 @@ class TestAppStateStore:
         StateStore(path).update_ui_state({"sidebar_collapsed": True})
 
         assert json.loads(path.read_text())["ui"]["sidebar_collapsed"] is True
+        # glob(pattern) → files matching it; none left → temp file was swapped in
         assert not list(tmp_path.glob(".state-*.tmp"))
 
 
@@ -72,6 +82,7 @@ class TestAppStateChooseWindowGeometry:
 
     def test_app_state_choose_window_geometry_off_screen_centers_default(self) -> None:
         geometry = choose_window_geometry(
+            # x=3000 → right of a 1512-wide screen (monitor unplugged)
             saved=WindowState(width=1000, height=680, x=3000, y=100),
             screens=[MAIN_SCREEN],
             default_size=DEFAULT_SIZE,

@@ -1,3 +1,9 @@
+// LEARN: YOU ARE HERE
+//   shell.js runs THIS FILE on first open ▶ it registers mount / unmount
+//   ▶ on a timer it calls Python (bridge call ▶ system_monitor/__init__.py)
+//   ▶ redraws the cards with charts.js
+//   read next → app/tools/log_viewer/ui/view.html
+
 // System Monitor page: polls Python on a timer and redraws the cards.
 //
 // LEARN: the refresh loop.
@@ -7,9 +13,16 @@
 //   every 30 s          ──▶ call("get_storage")    ──▶ donuts
 //
 //   tool hidden / window minimised ──▶ timers stop; back on screen ──▶ restart
+//
+//   polling (industry term) = asking again and again on a timer
+//
+// LEARN: (() => { … })() = run once now, keep names private (see icons.js)
 (() => {
+  // short names for the shared helpers (charts.js, icons.js)
   const C = window.BaoCharts;
   const I = window.BaoIcons;
+  // MS = milliseconds; 30000 ms = 30 s
+  // WARN / CRITICAL = where colours turn yellow / red
   const STORAGE_REFRESH_MS = 30000;
   const CPU_WARN = 60;
   const CPU_CRITICAL = 85;
@@ -18,14 +31,19 @@
   const TEMP_SCALE = { min: 30, max: 100 };
   const DISK_WARN = 75;
   const DISK_CRITICAL = 90;
-  // matches the 60 s rolling history kept in Python (history.py)
+  // matches the 60 s of recent values kept in Python (recent_values.py)
   const HISTORY_SECONDS = 60;
+  // drive kind → [icon name, tag text] shown under the drive
   const DRIVE_TAGS = {
     external: ["usb", "External"],
     network: ["network", "Network"],
     image: ["disc", "Disk image"],
   };
 
+  // LEARN: page-wide state for this tool (let = can change)
+  //   root = the content area we draw in; ctx = shell.js's tool context
+  //   prefs = this tool's settings; parts = rings / gauges built at mount
+  //   liveTimer / storageTimer = ids from setInterval, to stop them later
   let root = null;
   let ctx = null;
   let prefs = null;
@@ -46,12 +64,16 @@
   // LEARN: rows and donuts are built once and then only updated, so values
   // animate instead of the whole list being redrawn (which made it jump).
   // Rebuilt on every mount, because the shell gives the tool fresh markup.
+  // LEARN: Map = key → value store ≈ Python dict (keys can be anything)
+  //   here: app key → that app's row on screen
   let topRows = { cpu: new Map(), memory: new Map() };
   let storageView = null;
   // set once a GPU reading has been seen, so one missed reading does not
   // collapse the card to a single gauge and back
   let gpuSeen = false;
 
+  // LEARN: $ is just a short function name (allowed in JS)
+  //   $(".sm-load") = the first element inside this tool with class sm-load
   const $ = (selector) => root.querySelector(selector);
 
   // LEARN: keeps the page still while cards redraw. Reading layout in the
@@ -59,8 +81,11 @@
   // move the scroll position; if it moved, it is put back before the screen
   // is painted. The first correction per part is written to the log, so the
   // cause can be traced.
+  // LEARN: Set = a collection with no duplicates ≈ Python set
   const reportedScrollMoves = new Set();
 
+  // called by → the refresh functions, around every redraw
+  //   render = the drawing function to run (passed in, run here)
   function renderKeepingScrollPosition(part, render) {
     const before = root.scrollTop;
     render();
@@ -76,24 +101,31 @@
     );
   }
 
+  // how many points each line chart holds (see charts.js sparklineSlots)
   function historySlots() {
     return C.sparklineSlots(HISTORY_SECONDS, prefs.refresh_interval_seconds);
   }
 
+  // first data arrived → stop the shimmer on that card
   function markCardLoaded(selector) {
     $(selector).classList.remove("loading");
   }
 
   // ---------- CPU and memory ----------
+  // the render functions below: called by → refreshLiveStats, every refresh
+  //   input → one part of the Python answer (models.py shapes)
+  //   output → that card redrawn
 
   function renderCpuCard(cpu) {
     const color = C.statusColor(cpu.percent, CPU_WARN, CPU_CRITICAL);
     parts.cpuRing.update(cpu.percent, color, `${Math.round(cpu.percent)}%`, "in use");
+    // [1.234, 2.5, 3] → "1.23 · 2.50 · 3.00"  (toFixed(2) = 2 decimals)
     $(".sm-load").textContent = cpu.load_average.map((v) => v.toFixed(2)).join(" · ");
     const hasLayout = cpu.performance_cores + cpu.efficiency_cores > 0;
     $(".sm-core-summary").innerHTML = hasLayout
       ? `<b>${cpu.performance_cores}P + ${cpu.efficiency_cores}E</b> cores`
       : `<b>${cpu.cores.length}</b> cores`;
+    // display "none" → hidden; "" → back to the CSS default (shown)
     $(".sm-core-legend").style.display = hasLayout ? "" : "none";
     C.drawSparkline($(".sm-cpu-spark"), cpu.history, { min: 0, max: 100, color: "var(--accent)", slots: historySlots() });
     renderCoreColumns(cpu.cores);
@@ -102,6 +134,8 @@
 
   function renderCoreColumns(cores) {
     const container = $(".sm-cores");
+    // build the columns only when the core count changes (first time)
+    //   children = the elements directly inside; !== = not equal
     if (container.children.length !== cores.length) {
       container.innerHTML = cores
         .map(
@@ -115,6 +149,7 @@
       const fill = container.children[i].querySelector(".fill");
       fill.style.height = `${core.percent}%`;
       fill.style.background = core.kind === "E" ? "var(--e-core)" : "var(--p-core)";
+      // hover text, e.g. "Core 3 Efficiency 42%" (nested ? : picks the word)
       container.children[i].title = `Core ${core.index} ${core.kind === "E" ? "Efficiency" : core.kind === "P" ? "Performance" : ""} ${Math.round(core.percent)}%`;
     });
   }
@@ -144,6 +179,7 @@
       $(".sm-unavailable-reason").textContent = temperature.reason || "";
       return;
     }
+    // "chip" = only one whole-chip sensor (fallback) → no separate GPU
     const isChip = temperature.source === "chip";
     if (!isChip && temperature.gpu_hottest != null) gpuSeen = true;
     const showGpu = !isChip && gpuSeen;
@@ -173,11 +209,15 @@
         { name: cpuName, values: temperature.cpu_history, color: "var(--series-1)" },
         { name: "GPU", values: showGpu ? temperature.gpu_history : [], color: "var(--series-2)" },
       ],
+      // { ...TEMP_SCALE, slots } = { min: 30, max: 100, slots }
       { ...TEMP_SCALE, slots: historySlots() },
     );
   }
 
   // ---------- top apps ----------
+
+  // one new row element + handles to its parts (updated later)
+  // called by → renderAppRows, when an app first appears in the list
 
   function createAppRow(app) {
     const el = document.createElement("div");
@@ -189,6 +229,7 @@
       <div><div class="bar"><div></div></div><div class="mini-ring"></div></div>
       <div class="app-val num"></div>
       <svg class="app-spark"></svg>`;
+    // after the fade-in finishes, drop the class (so it can't replay)
     el.addEventListener("animationend", () => el.classList.remove("entering"), { once: true });
     return {
       el,
@@ -199,6 +240,7 @@
     };
   }
 
+  // new numbers into an existing row; kind = "cpu" or "memory"
   function updateAppRow(row, app, kind, memoryTotal) {
     const share = kind === "cpu" ? app.cpu_percent : (app.memory_bytes / memoryTotal) * 100;
     const color = C.statusColor(share, CPU_WARN, CPU_CRITICAL);
@@ -216,6 +258,10 @@
     });
   }
 
+  // LEARN: where each row is on screen now (first step of FLIP below)
+  //   [...list.querySelectorAll(…)] → turn the result into a real array
+  //   getBoundingClientRect().top → distance from the top of the window
+  //   new Map([[el, top], …]) → row element → its top
   function measureRowTops(list) {
     return new Map([...list.querySelectorAll(".app-row")].map((el) => [el, el.getBoundingClientRect().top]));
   }
@@ -226,7 +272,11 @@
   // the ranking actually changed.
   function placeRowsInOrder(list, ordered, topsBefore) {
     const current = [...list.children];
+    // same rows, same order → nothing to do
+    //   .every(f) → true if f is true for all items ≈ Python all(…)
     if (current.length === ordered.length && current.every((el, i) => el === ordered[i])) return;
+    // appendChild on an element already in the list MOVES it to the end
+    //   → doing it for each row in order = the rows are now sorted
     ordered.forEach((el) => list.appendChild(el));
     ordered.forEach((el) => {
       const before = topsBefore.get(el);
@@ -242,6 +292,11 @@
     });
   }
 
+  // LEARN: keep the list in step with the newest top apps
+  //   called by → refreshLiveStats, when a list is open
+  //   rows gone from the top → removed; new apps → new rows
+  //   kept rows are reused (only numbers change) → no flicker
+  //   industry term: "keyed list reconciliation" (what React / Vue do)
   function renderAppRows(list, rows, apps, kind, memoryTotal) {
     if (!apps.length) {
       rows.clear();
@@ -249,6 +304,7 @@
       return;
     }
     const topsBefore = measureRowTops(list);
+    // ?. → only call remove() if something was found ("optional chaining")
     list.querySelector(".top-empty")?.remove();
     const keys = new Set(apps.map((app) => app.key));
     rows.forEach((row, key) => {
@@ -270,6 +326,7 @@
     return kind === "cpu" ? prefs.cpu_top_apps_open : prefs.memory_top_apps_open;
   }
 
+  // show / hide both lists to match the saved settings
   function applyTopListOpenState() {
     root.querySelectorAll(".top-toggle").forEach((button) => {
       const open = isTopListOpen(button.dataset.list);
@@ -278,6 +335,8 @@
     });
   }
 
+  // "Top apps ▸" clicked → flip and SAVE that setting, then redraw
+  // one listener for the whole tool ("event delegation", see settings.js)
   async function onTopToggleClick(event) {
     const button = event.target.closest(".top-toggle");
     if (!button) return;
@@ -294,10 +353,14 @@
 
   // ---------- storage ----------
 
+  // network drives and disk images → drawn muted (dotted ring, grey)
+
   function isSecondaryDrive(drive) {
     return drive.kind === "network" || drive.kind === "image";
   }
 
+  // one drive: ring + name + sizes; bigger for the main disk
+  // called by → renderStorageCard, when the set of drives changes
   function createDriveView(drive) {
     const isMain = drive.kind === "main";
     const isSecondary = isSecondaryDrive(drive);
@@ -322,6 +385,7 @@
     };
   }
 
+  // new numbers into an existing drive view
   function updateDriveView(view, drive) {
     const percent = drive.used_percent ?? 0;
     const color =
@@ -329,6 +393,10 @@
     view.ring.update(percent, color, drive.responding ? `${Math.round(percent)}%` : "—");
     view.name.textContent = drive.name;
     // built only from formatted numbers, never from system names
+    // nested a ? b : c ? d : e = if / else if / else
+    //   not responding → "Not responding"
+    //   main disk      → "X free · Y of Z"
+    //   any other      → "X free of Z"
     view.meta.innerHTML = !drive.responding
       ? "Not responding"
       : drive.kind === "main"
@@ -341,12 +409,15 @@
   // otherwise each one just animates to its new value
   function renderStorageCard(storage) {
     const drives = storage.drives;
+    // signature = one text naming every drive; it changes only when drives
+    //   are added / removed → "main:/|external:/Volumes/USB"
     const signature = drives.map((drive) => `${drive.kind}:${drive.mountpoint}`).join("|");
     if (!storageView || storageView.signature !== signature) {
       const container = $(".sm-drives");
       container.innerHTML = "";
       storageView = { signature, views: drives.map(createDriveView) };
       storageView.views.forEach((view, i) => {
+        // a thin line between the main disk and the rest
         if (i === 1 && drives[0].kind === "main") container.insertAdjacentHTML("beforeend", '<div class="drives-divider"></div>');
         container.appendChild(view.el);
       });
@@ -357,10 +428,16 @@
 
   // ---------- refresh loop ----------
 
+  // is this reply still wanted? (see the counters near the top)
+
   function isRefreshSessionCurrent(session) {
     return running && session === refreshSession;
   }
 
+  // LEARN: one live refresh
+  //   called by → the timer, startRefreshTimers, onTopToggleClick
+  //   skips if the previous one hasn't answered yet (no pile-up)
+  //   try / finally → the "in flight" mark is always cleared, even on error
   async function refreshLiveStats() {
     const session = refreshSession;
     if (!running || liveInFlightSession === session) return;
@@ -390,6 +467,7 @@
     }
   }
 
+  // one storage refresh (same pattern as refreshLiveStats)
   async function refreshStorage() {
     const session = refreshSession;
     if (!running || storageInFlightSession === session) return;
@@ -402,6 +480,9 @@
     }
   }
 
+  // LEARN: setInterval(f, ms) → call f every ms milliseconds until stopped
+  //   gives back an id; clearInterval(id) stops it
+  //   called by → mount, and shell.js resume (window shown again)
   function startRefreshTimers() {
     if (running || !mounted || document.hidden) return;
     running = true;
@@ -412,12 +493,17 @@
     storageTimer = setInterval(refreshStorage, STORAGE_REFRESH_MS);
   }
 
+  // called by → unmount, and shell.js pause (window hidden)
   function stopRefreshTimers() {
     running = false;
     clearInterval(liveTimer);
     clearInterval(storageTimer);
   }
 
+  // LEARN: the tool comes on screen
+  //   called by → shell.js openView, right after view.html is put in place
+  //   container = the content area; context = { call, getPreferences, … }
+  //   builds rings / gauges, loads settings, starts the timers
   async function mount(container, context) {
     mountGeneration += 1;
     const generation = mountGeneration;
@@ -439,6 +525,7 @@
     if (generation !== mountGeneration || !root) return;
     $(".sm-refresh-label").textContent = `Live · every ${prefs.refresh_interval_seconds}s`;
     // an open list reserves room for every row up front, so it never grows as rows arrive
+    // setProperty("--x", v) → set a CSS variable from JS (used in view.css)
     $(".sm").style.setProperty("--sm-top-count", prefs.top_apps_count);
     applyTopListOpenState();
     root.addEventListener("click", onTopToggleClick);
@@ -448,6 +535,8 @@
     startRefreshTimers();
   }
 
+  // the tool leaves the screen: stop everything, forget the page
+  // called by → shell.js openView, before another view opens
   function unmount() {
     mountGeneration += 1;
     mounted = false;
@@ -456,6 +545,8 @@
     root = null;
   }
 
+  // plug into the shell (see shell.js BaoTools); runs once, when loaded
+  //   pause: stopRefreshTimers → "use this function for pause"
   window.BaoTools.register("system_monitor", {
     mount,
     unmount,

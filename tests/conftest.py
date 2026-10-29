@@ -1,8 +1,27 @@
+# LEARN: YOU ARE HERE
+#   make test ▶ pytest loads THIS FILE first ▶ every test file gets these fakes
+#   read next → tests/test_app_config.py
 """
 Shared fakes for every test.
 
 LEARN: fixtures defined here are available to all test files by name, with no
 import. Fake system data keeps results the same on any machine.
+
+LEARN: how pytest works (see tests/README.md for the full picture)
+  test file  = test_*.py
+  test class = Test… (a group of tests, no __init__ needed)
+  test       = a method named test_…
+  assert x   → the test fails if x is false
+
+LEARN: fixture = a ready-made input a test asks for BY NAME
+  def test_x(self, fake_clock: FakeClock) → pytest calls fake_clock() below
+  and passes the result in; each test gets a fresh one
+  @pytest.fixture = the decorator that marks a function as a fixture
+  industry term: "test fixture" / "dependency injection"
+
+LEARN: fake (industry term: "test double")
+  a stand-in for the real thing (clock, sensors, drives)
+  → same result on every Mac, no waiting, no real hardware
 """
 
 from pathlib import Path
@@ -26,11 +45,18 @@ CHROME_HELPER = (
 
 
 class FakeClock:
-    """A clock tests can move forward by hand."""
+    """
+    A clock tests can move forward by hand.
+
+    LEARN: replaces time.monotonic in recent_values.py
+      fake_clock.advance(10) → "10 seconds pass" instantly
+    """
 
     def __init__(self) -> None:
         self.now = 1000.0
 
+    # LEARN: __call__ → the object can be called like a function
+    #   fake_clock() → 1000.0 (same as how time.monotonic() is called)
     def __call__(self) -> float:
         return self.now
 
@@ -38,6 +64,8 @@ class FakeClock:
         self.now += seconds
 
 
+# LEARN: a tiny pretend tool, so bridge / preferences tests don't need the
+#   real System Monitor (which reads the real Mac)
 class EchoResult(BaseModel):
     text: str
 
@@ -55,6 +83,7 @@ class DummyTool(Tool):
     def echo_text(self, text: str) -> EchoResult:
         return EchoResult(text=text)
 
+    # public, but NOT in actions → the bridge must refuse it (allow list test)
     def secret_helper(self) -> EchoResult:
         return EchoResult(text="should never be reachable")
 
@@ -64,6 +93,8 @@ def fake_clock() -> FakeClock:
     return FakeClock()
 
 
+# LEARN: tmp_path = a built-in pytest fixture: a fresh empty folder per test,
+#   deleted later → tests never touch the real state.json
 @pytest.fixture
 def state_store(tmp_path: Path) -> StateStore:
     return StateStore(tmp_path / "state.json")
@@ -74,6 +105,8 @@ def dummy_tool() -> DummyTool:
     return DummyTool()
 
 
+# Chrome main + Chrome helper → should group into ONE "Google Chrome" app
+# kernel_task has no exe path → grouped by its name
 @pytest.fixture
 def fake_process_samples() -> list[ProcessSample]:
     return [
@@ -100,6 +133,8 @@ def fake_process_samples() -> list[ProcessSample]:
     ]
 
 
+# Tp = CPU P-core, Te = CPU E-core, Tg = GPU
+# -50 and 250 → impossible values the reader must ignore
 @pytest.fixture
 def fake_smc_readings() -> list[SensorReading]:
     return [
@@ -113,6 +148,7 @@ def fake_smc_readings() -> list[SensorReading]:
     ]
 
 
+# fallback sensors: only "PMU tdie" ones count as the chip temperature
 @pytest.fixture
 def fake_hid_readings() -> list[SensorReading]:
     return [
@@ -123,6 +159,8 @@ def fake_hid_readings() -> list[SensorReading]:
     ]
 
 
+# a messy real-world list: system volumes, a duplicate T7, Time Machine
+# snapshots, hidden volumes → storage.py must keep only real drives
 @pytest.fixture
 def fake_mounted_volumes() -> list[MountedVolume]:
     return [

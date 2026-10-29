@@ -1,4 +1,6 @@
 <!-- LEARN-README -->
+start here → [\_\_init\_\_.py](__init__.py), then follow each file's "read next"
+
 # System Monitor
 
 ## Where each number comes from
@@ -37,3 +39,6 @@ view.js timer
 | ctypes | Calls C functions in a system library directly from Python |
 | PyObjC | Calls Objective C classes (AppKit, Foundation) from Python |
 | purgeable space | Space macOS can free on demand (caches); Finder counts it as free |
+| rolling window | Keep only the last 60 s of values (recent_values.py) |
+| polling | The page asks again on a timer instead of Python pushing updates |
+| FLIP animation | Rows slide to their new rank instead of jumping (view.js) |

@@ -1,3 +1,6 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks app/config.py (settings from .env / environment)
+#   read next → tests/test_app_state.py
 from pathlib import Path
 
 import pytest
@@ -9,6 +12,7 @@ from app.paths import PROJECT_ROOT
 
 def build_settings_without_env_file() -> AppSettings:
     # ignore any real .env on this machine so results are the same everywhere
+    # _env_file=None → a pydantic-settings option: "read no .env file"
     return AppSettings(_env_file=None)
 
 
@@ -25,6 +29,8 @@ class TestAppConfigEnvironment:
     def test_app_config_environment_overrides_with_bao_prefix(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
+        # LEARN: monkeypatch = built-in pytest fixture that changes things for
+        #   ONE test, then puts them back (here: environment variables)
         monkeypatch.setenv("BAO_LOG_LEVEL", "DEBUG")
         monkeypatch.setenv("BAO_LOG_DIR", str(tmp_path))
 
@@ -38,5 +44,6 @@ class TestAppConfigEnvironment:
     ) -> None:
         monkeypatch.setenv("BAO_LOG_LEVEL", "LOUD")
 
+        # LEARN: with pytest.raises(Err): → the test PASSES only if Err happens
         with pytest.raises(ValidationError):
             build_settings_without_env_file()

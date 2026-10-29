@@ -1,3 +1,6 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks top_apps.py (grouping processes into apps)
+#   read next → tests/test_system_monitor_storage.py
 from typing import Any
 
 import psutil
@@ -14,6 +17,8 @@ from app.tools.system_monitor.top_apps import (
 from tests.conftest import CHROME, CHROME_HELPER
 
 
+# LEARN: fakes shaped like psutil's objects, only the parts top_apps.py uses
+#   → the test controls exactly what "the system" reports
 class FakeMemoryInfo:
     def __init__(self, rss: int) -> None:
         self.rss = rss
@@ -26,6 +31,10 @@ class FakeProcess:
         self.info: dict[str, Any] = {"pid": pid, "name": name, "exe": None}
         self._error = error
 
+    # LEARN: __enter__ / __exit__ → the object works in a with-block
+    #   (the real code does: with process.oneshot(): …)
+    #   "FakeProcess" in quotes → the class isn't finished yet, so its name
+    #   is written as text (industry term: "forward reference")
     def oneshot(self) -> "FakeProcess":
         return self
 
@@ -37,6 +46,7 @@ class FakeProcess:
 
     def cpu_percent(self, interval: float | None = None) -> float:
         if self._error:
+            # e.g. psutil.AccessDenied(3) → like a process we may not read
             raise self._error(self.info["pid"])
 
         return 12.0
@@ -45,6 +55,7 @@ class FakeProcess:
         return FakeMemoryInfo(rss=1024)
 
 
+# test helper: group, then index by app name → apps["Google Chrome"]
 def group_by_name(samples: list[ProcessSample]) -> dict[str, AppTotals]:
     return {app.name: app for app in group_process_samples_by_app(samples, cpu_count=8)}
 
@@ -109,6 +120,9 @@ class TestSystemMonitorTopAppsReadProcessSamples:
             FakeProcess(pid=2, name="gone", error=psutil.NoSuchProcess),
             FakeProcess(pid=3, name="WindowServer", error=psutil.AccessDenied),
         ]
+        # LEARN: monkeypatch.setattr(module, "name", new) → swap a function for
+        #   this test only; here psutil.process_iter returns our fakes
+        #   industry term: "mocking" / "patching"
         monkeypatch.setattr(psutil, "process_iter", lambda attrs: processes)
 
         samples = TopAppsReader().read_process_samples()

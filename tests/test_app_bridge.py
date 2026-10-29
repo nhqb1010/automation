@@ -1,3 +1,6 @@
+# LEARN: YOU ARE HERE
+#   pytest ▶ THIS FILE checks app/bridge.py (what the page may call)
+#   read next → tests/test_system_monitor_cpu_memory.py
 import logging
 
 import pytest
@@ -34,6 +37,7 @@ class TestAppBridgeTools:
         self, bridge: AppBridge
     ) -> None:
         # pywebview exposes every public attribute to the page, so state stays private
+        # vars(obj) → the object's attributes as a dict (names → values)
         public = [name for name in vars(bridge) if not name.startswith("_")]
 
         assert public == []
@@ -68,6 +72,8 @@ class TestAppBridgeLogClientError:
     def test_app_bridge_log_client_error_goes_to_log(
         self, bridge: AppBridge, caplog: pytest.LogCaptureFixture
     ) -> None:
+        # LEARN: caplog = built-in pytest fixture that catches log lines
+        #   caplog.text = everything logged inside the with-block
         with caplog.at_level(logging.ERROR, logger="ui"):
             bridge.log_client_error("boom", "view.js", 12)
 
