@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks mac_info.py (model, ages) with fixed values
 #   (no real macOS tools are run)
-#   read next → tests/test_system_monitor_top_apps.py
+#   read next → tests/test_system_monitor_tool.py
 import json
 import os
 import plistlib

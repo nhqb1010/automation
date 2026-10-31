@@ -52,6 +52,8 @@ class SettingsField(BaseModel):
     choices: list[Any]
     # e.g. "s" → buttons read "1 s", "2 s"
     unit: str | None
+    # custom button texts by value, e.g. {"300": "5 min"} (empty → use unit)
+    choice_labels: dict[str, str] = {}
     # the value saved right now (that button is highlighted)
     value: Any
 
@@ -129,6 +131,8 @@ def describe_settings_section(tool: Tool, values: BaseModel) -> SettingsSection:
                 description=field.description,
                 choices=list_field_choices(field),
                 unit=read_field_extra(field, "unit"),
+                # "or {}" → no labels given → an empty dict
+                choice_labels=read_field_extra(field, "choice_labels") or {},
                 # getattr(values, "x") = values.x, with the name as text
                 value=getattr(values, name),
             )

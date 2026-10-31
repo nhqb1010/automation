@@ -105,7 +105,24 @@ class TestAppPreferencesDescribeSettingsSections:
         (section,) = preferences.describe_settings_sections()
         fields = {field.name: field for field in section.fields}
 
-        assert set(fields) == {"refresh_interval_seconds", "top_apps_count"}
+        assert set(fields) == {
+            "refresh_interval_seconds",
+            "battery_refresh_seconds",
+            "storage_refresh_seconds",
+            "slow_down_in_background",
+            "top_apps_count",
+        }
         assert fields["refresh_interval_seconds"].choices == [1, 2, 5, 10]
         assert fields["refresh_interval_seconds"].unit == "s"
         assert fields["top_apps_count"].value == 5
+
+    def test_app_preferences_describe_custom_choice_labels(
+        self, preferences: PreferencesService
+    ) -> None:
+        (section,) = preferences.describe_settings_sections()
+        fields = {field.name: field for field in section.fields}
+
+        assert fields["storage_refresh_seconds"].choices == [30, 60, 300]
+        assert fields["storage_refresh_seconds"].choice_labels["300"] == "5 min"
+        # fields without labels get an empty dict, never None
+        assert fields["top_apps_count"].choice_labels == {}

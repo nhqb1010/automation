@@ -1,6 +1,6 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks app/state.py (state.json, window placement)
-#   read next → tests/test_app_preferences.py
+#   read next → tests/test_app_usage.py
 import json
 from pathlib import Path
 

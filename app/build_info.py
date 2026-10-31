@@ -2,7 +2,7 @@
 #   main.py at startup ▶ THIS FILE says which version is running
 #   ▶ bridge get_app_info ▶ the line at the bottom of the Settings page
 #   (make build_app also runs THIS FILE directly to write the stamp file)
-#   read next → app/logging_setup.py
+#   read next → app/app_usage.py
 """
 Which version of the app is running, and when it was built.
 
@@ -15,6 +15,9 @@ LEARN: how the stamp gets into the installed app
 
   installed app → reads that file → "Version 0.1.0 · built 29 Oct 22:40 · ff822d1"
   dev copy      → no file → asks pyproject.toml and git → "Version 0.1.0 · dev · …"
+
+  built while files had uncommitted changes → "· modified" is added, so the
+  commit id never pretends to describe code it doesn't match
 """
 
 import logging
@@ -43,12 +46,15 @@ class BuildInfo(BaseModel):
     made by → load_build_info (app) or collect_build_info (the build)
     built_at → ISO time text, e.g. "2026-10-29T22:40:00"; None in dev
     commit → short git commit id, e.g. "ff822d1"; None if git isn't there
+    modified → tracked files had uncommitted changes when it was built
+      (= False → older stamp files without this field still load)
     """
 
     version: str
     built_at: str | None
     commit: str | None
     is_dev: bool
+    modified: bool = False
 
 
 def read_project_version(pyproject_file: Path) -> str:
@@ -61,26 +67,51 @@ def read_project_version(pyproject_file: Path) -> str:
         return str(tomllib.load(file)["project"]["version"])
 
 
-def read_git_commit(project_root: Path) -> str | None:
+def run_git_command(project_root: Path, arguments: list[str]) -> str | None:
     """
-    LEARN: the short id of the commit the code is on, or None
+    LEARN: run one git command in the project folder, give back its output
 
-    git rev-parse --short HEAD → e.g. "ff822d1"
+    called by → read_git_commit, read_git_has_changes
     no git / not a repo / too slow → None (the stamp just leaves it out)
     """
     try:
         result = subprocess.run(
-            [GIT_PATH, "rev-parse", "--short", "HEAD"],
+            [GIT_PATH, *arguments],
             capture_output=True,
             check=True,
             cwd=project_root,
             text=True,
             timeout=2,
         )
+    # LEARN: "except A, B:" (no brackets) = catch A or B; new in Python 3.14
+    #   same as the older "except (A, B):"
     except OSError, subprocess.SubprocessError:
         return None
 
-    return result.stdout.strip() or None
+    return result.stdout
+
+
+def read_git_commit(project_root: Path) -> str | None:
+    # git rev-parse --short HEAD → e.g. "ff822d1"
+    output = run_git_command(project_root, ["rev-parse", "--short", "HEAD"])
+    if output is None:
+        return None
+
+    return output.strip() or None
+
+
+def read_git_has_changes(project_root: Path) -> bool:
+    """
+    LEARN: do committed files have changes that aren't committed yet?
+
+    git status --porcelain → one short line per changed file (empty = clean)
+    --untracked-files=no → new files git doesn't track (scratch files) don't
+      count; only changes to the project's real files do
+    """
+    output = run_git_command(
+        project_root, ["status", "--porcelain", "--untracked-files=no"]
+    )
+    return bool(output and output.strip())
 
 
 def collect_build_info(is_dev: bool) -> BuildInfo:
@@ -96,6 +127,7 @@ def collect_build_info(is_dev: bool) -> BuildInfo:
         built_at=None if is_dev else datetime.now().isoformat(timespec="seconds"),
         commit=read_git_commit(PROJECT_ROOT),
         is_dev=is_dev,
+        modified=read_git_has_changes(PROJECT_ROOT),
     )
 
 
@@ -128,6 +160,7 @@ def format_build_label(info: BuildInfo) -> str:
     called by → bridge.get_app_info (Settings page), main.py (startup log)
       "Version 0.1.0 · built 29 Oct 22:40 · ff822d1"   installed
       "Version 0.1.0 · dev · ff822d1"                   make start_app
+      "… · ff822d1 · modified"        built with uncommitted changes
     datetime.fromisoformat(text) → read the time back; strftime → format it
     """
     parts = [f"Version {info.version}"]
@@ -139,6 +172,26 @@ def format_build_label(info: BuildInfo) -> str:
 
     if info.commit:
         parts.append(info.commit)
+    if info.modified:
+        parts.append("modified")
+
+    return " · ".join(parts)
+
+
+def format_short_build_label(info: BuildInfo) -> str:
+    """
+    LEARN: the stamp, short, for the bottom of the sidebar
+
+    called by → bridge.get_app_info (shell.js shows it)
+      "v0.1.0"              installed, clean
+      "v0.1.0 · modified"   installed, built with uncommitted changes
+      "v0.1.0 · dev"        make start_app
+    """
+    parts = [f"v{info.version}"]
+    if info.is_dev:
+        parts.append("dev")
+    elif info.modified:
+        parts.append("modified")
 
     return " · ".join(parts)
 

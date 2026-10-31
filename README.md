@@ -15,7 +15,9 @@ regular Mac app that you can open from Spotlight, Launchpad, or the Dock.
     and charger power, the apps that use the most CPU and memory, storage on
     every drive, and which Mac this is (model, age, and uptime).
 *   **Logs**: the app's own log file, live, with level filters and search.
-*   **Settings**: one section per tool, built from each tool's settings.
+    A red count on **Logs** in the sidebar shows errors you haven't seen.
+*   **Settings**: open the app at login, see how much CPU and memory the app
+    itself uses, and change each tool's settings.
 
 ## Requirements
 
@@ -82,7 +84,30 @@ After the first install, press ⌘Space and type **Bao** to open the app.
 
 To check which version is installed, open **Settings** in the app. The line
 at the bottom shows the version, the build time, and the Git commit, for
-example `Version 0.1.0 · built 29 Oct 22:40 · ff822d1`.
+example `Version 0.1.0 · built 29 Oct 22:40 · ff822d1`. If the app was built
+while files had uncommitted changes, the line ends in `· modified`.
+
+### Open the app at login
+
+1.  Install the app with `make install_app`.
+1.  In the app, open **Settings** and set **Open at login** to **On**.
+
+macOS shows a "Login item added" notice. To turn it off, set the switch back
+to **Off**, or use **System Settings > General > Login Items**. The switch is
+unavailable in the development copy, because only an installed app can open
+at login.
+
+### Raise the version number
+
+Raise the version before you install a release you want to tell apart:
+
+```bash
+make bump_version              # 0.1.0 → 0.1.1, for small fixes
+make bump_version PART=minor   # 0.1.0 → 0.2.0, for new features
+make bump_version PART=major   # 0.1.0 → 1.0.0, for big changes
+```
+
+The command updates `pyproject.toml` and `uv.lock`; commit both files.
 
 ### Update the installed app
 
@@ -118,6 +143,21 @@ Installed copy:
 *   Developer settings: not read. The installed app always uses defaults.
 
 The **Logs** tool always shows the log of the copy you're looking at.
+
+## Keep the app light
+
+System Monitor reads your Mac on timers. To trade freshness for less CPU,
+open **Settings** and change these under **System Monitor**:
+
+*   **Refresh interval**: CPU, memory, and temperature (default 2 s).
+*   **Battery refresh**: the Power card (default 10 s).
+*   **Storage refresh**: drive sizes (default 30 s).
+*   **Slow down in the background**: while another app is in front, nothing
+    refreshes more often than every 10 s (default on).
+
+The **This app's own usage** card at the top of **Settings** shows the app's
+own CPU and memory use. After you change a setting, watch the CPU line for a
+minute to see the effect.
 
 ## Change developer settings
 
@@ -192,6 +232,18 @@ home folder. Spotlight can take a minute to index a new app.
 The card shows the reason under its title. A Mac without a battery has no
 power information. Temperature sensors can differ between Mac models.
 
+### The Logs entry in the sidebar shows a red number
+
+The number counts errors logged since you last opened the **Logs** tool.
+Open **Logs** to read them; the number disappears once you've seen them.
+
+### A line says "Blocked by the security policy"
+
+The app refused to run code that isn't one of its own files, which is what
+its security policy is for. If it appears after you changed a page file,
+the change loads code in a way the policy doesn't allow. The comment above
+the policy in `app/ui/index.html` lists what's allowed.
+
 ### The app crashed or a tool didn't load
 
 Open the **Logs** tool, or run `make logs` for the development copy. Errors
@@ -213,6 +265,10 @@ Makefile             every command in this README
 ```
 
 Each folder has its own README with more detail.
+
+## Roadmap
+
+Planned ideas that aren't built yet are listed in [ROADMAP.md](ROADMAP.md).
 
 ## See also
 
@@ -256,7 +312,8 @@ Following it from the Makefile walks the whole project:
 
 ```
 Makefile ▶ app/__main__.py ▶ main ▶ paths ▶ config ▶ build_info
-  ▶ logging_setup ▶ single_instance ▶ state ▶ tools/__init__ ▶ tools/base
+  ▶ app_usage ▶ login_item ▶ logging_setup ▶ single_instance ▶ state
+  ▶ tools/__init__ ▶ tools/base
   ▶ system_monitor/__init__ ▶ models ▶ cpu_memory ▶ recent_values
   ▶ temperature ▶ power ▶ mac_info ▶ top_apps ▶ app_icons ▶ storage
   ▶ log_viewer/__init__ ▶ models ▶ reader

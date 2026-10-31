@@ -15,6 +15,8 @@ __main__ ──▶ main.run_internal_apps()
                │
                ├─ config         .env ──▶ AppSettings (BAO_ keys, dev copy only)
                ├─ build_info     version stamp ──▶ Settings page footer
+               ├─ app_usage      the app's own CPU / memory ──▶ Settings
+               ├─ login_item     Open at login ──▶ macOS Login Items
                ├─ logging_setup  logs/app.log, rotating, crash hook
                ├─ single_instance  already running? ──▶ focus it, quit
                ├─ state          state.json ──▶ window, ui, preferences
@@ -45,6 +47,10 @@ view.js ◀───────────── JSON ◀── model_dump ◀
 | atomic write | Write a temp file, then rename it over the old one in one step |
 | Unix socket | A file-shaped endpoint for two local processes to talk |
 | excepthook | Python hook that runs for any error nobody caught |
+| Content-Security-Policy | The page's rule for where code may come from; blocks code hidden in text |
+| blob: URL | An address for an in-memory file; how tool scripts load under that rule |
+| throttling | Refreshing less often on purpose (here: while the window is in the background) |
+| Login Items | macOS's list of apps opened at login; the app adds itself with SMAppService |
 | frozen app | The built Mac app (Python packed inside); paths.py picks ~/Library for its data |
 | allowlist | Only names on a fixed list may run (the tool's actions) |
 | schema-driven UI | The Settings page is drawn from each settings model, no page code per tool |

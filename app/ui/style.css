@@ -149,6 +149,40 @@ body {
 .nav-item.active { background: var(--surface-2); color: var(--text-primary); }
 .nav-icon { display: grid; place-items: center; flex: none; }
 .nav-spacer { flex: 1; } /* takes all spare height → Settings sits at the bottom */
+/* red count of unseen errors (Logs entry); collapsed sidebar → a dot on the icon */
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--critical);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 16px;
+  text-align: center;
+}
+
+.nav-badge[hidden] { display: none; }
+.nav-badge:not([hidden]) + .kbd { margin-left: 6px; }
+.nav-item { position: relative; }
+.app.collapsed .nav-badge { position: absolute; top: 5px; right: 9px; min-width: 8px; height: 8px; padding: 0; font-size: 0; }
+
+/* version under Settings: small and muted; full stamp on hover; hidden when
+   the sidebar is collapsed */
+.app-version {
+  padding: 6px 10px 0;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.app.collapsed .app-version { display: none; }
+
 .kbd { margin-left: auto; /* auto margin → pushed to the right end */ color: var(--text-muted); font-size: 11px; }
 
 /* collapsed → hide every text label, center the icons */
@@ -303,6 +337,18 @@ body {
 }
 
 .segmented button.on { background: var(--accent); color: #fff; }
+/* disabled (e.g. Open at login in the dev copy) → dimmed, not clickable */
+.segmented button:disabled { opacity: 0.45; cursor: default; }
+
+/* the own-usage row: text + sparkline on the left, three numbers on the right */
+.usage-row { align-items: flex-start; }
+.usage-text { flex: 1; min-width: 0; }
+.usage-stats { display: flex; gap: 18px; flex: none; }
+/* fixed width → "0.8%" becoming "12.3%" can't push the text beside it into a
+   new line (which would make the page jump; see app/ui/README.md) */
+.usage-stats div { display: flex; flex-direction: column; align-items: flex-end; min-width: 64px; }
+.usage-stats b { font-size: 18px; font-weight: 650; }
+.usage-stats span { font-size: 11px; color: var(--text-muted); }
 
 /* shared chart pieces (drawn by charts.js)
    LEARN: position: absolute + inset: 0 → the label covers the ring exactly,

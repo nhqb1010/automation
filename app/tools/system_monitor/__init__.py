@@ -12,7 +12,8 @@ LEARN: __init__.py = the file that runs when you import the folder itself
 LEARN: this file is the tool's "front desk"; the readers do the real work
 
   page asks          this file          does the work
-  get_live_stats ──▶ CpuMemoryReader + TemperatureMonitor + PowerReader
+  get_live_stats ──▶ CpuMemoryReader + TemperatureMonitor
+  get_power      ──▶ PowerReader (its own timer, default every 10 s)
   get_top_apps   ──▶ TopAppsReader
   get_storage    ──▶ StorageReader
   get_mac_info   ──▶ MacInfoReader (once per visit)
@@ -26,7 +27,13 @@ from pydantic import BaseModel, Field
 from app.tools.base import Tool, ToolInfo
 from app.tools.system_monitor.cpu_memory import CpuMemoryReader
 from app.tools.system_monitor.mac_info import MacInfoReader
-from app.tools.system_monitor.models import LiveStats, MacInfo, StorageStats, TopApps
+from app.tools.system_monitor.models import (
+    LiveStats,
+    MacInfo,
+    PowerStats,
+    StorageStats,
+    TopApps,
+)
 from app.tools.system_monitor.power import PowerReader
 from app.tools.system_monitor.storage import StorageReader
 from app.tools.system_monitor.temperature import TemperatureMonitor
@@ -48,6 +55,7 @@ class SystemMonitorSettings(BaseModel):
       title / description → the text shown on the Settings page
       json_schema_extra → our own extra tags:
         "unit": "s"      → buttons read "1s 2s 5s 10s"
+        "choice_labels"  → a custom text per button, e.g. 300 → "5 min"
         "hidden": True   → saved, but NOT shown on the Settings page
     """
 
@@ -56,6 +64,25 @@ class SystemMonitorSettings(BaseModel):
         title="Refresh interval",
         description="How often CPU, RAM and temperature update.",
         json_schema_extra={"unit": "s"},
+    )
+    battery_refresh_seconds: Literal[2, 5, 10, 30] = Field(
+        default=10,
+        title="Battery refresh",
+        description="How often the Power card updates. Battery values change slowly.",
+        json_schema_extra={"unit": "s"},
+    )
+    storage_refresh_seconds: Literal[30, 60, 300] = Field(
+        default=30,
+        title="Storage refresh",
+        description="How often drive sizes update.",
+        json_schema_extra={
+            "choice_labels": {"30": "30s", "60": "1 min", "300": "5 min"}
+        },
+    )
+    slow_down_in_background: bool = Field(
+        default=True,
+        title="Slow down in the background",
+        description="While the window isn't in front, refresh at most every 10 s.",
     )
     top_apps_count: Literal[3, 5, 10] = Field(
         default=5,
@@ -91,7 +118,7 @@ class SystemMonitorTool(Tool):
     settings_model = SystemMonitorSettings
     # the ONLY methods the page may call; anything else is refused
     actions = frozenset(
-        {"get_live_stats", "get_top_apps", "get_storage", "get_mac_info"}
+        {"get_live_stats", "get_power", "get_top_apps", "get_storage", "get_mac_info"}
     )
     # LEARN: Path(__file__) = this file's own location
     #   .parent / "ui" → the ui folder next to it (view.html / .css / .js)
@@ -107,14 +134,17 @@ class SystemMonitorTool(Tool):
         self._storage = StorageReader()
 
     def get_live_stats(self) -> LiveStats:
-        # called every refresh (default every 2 s)
-        #   → CPU + Memory + Temperature + Power
+        # called every refresh (default every 2 s) → CPU + Memory + Temperature
         return LiveStats(
             cpu=self._cpu_memory.read_cpu_stats(),
             memory=self._cpu_memory.read_memory_stats(),
             temperature=self._temperature.read_temperature_stats(),
-            power=self._power.read_power_stats(),
         )
+
+    def get_power(self) -> PowerStats:
+        # called on its own timer (Settings → Battery refresh, default 10 s)
+        # → reading the battery starts a macOS tool, so it runs less often
+        return self._power.read_power_stats()
 
     def get_top_apps(self, limit: int) -> TopApps:
         # called every refresh, only while a Top apps list is open

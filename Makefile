@@ -20,7 +20,7 @@ BUILT_APP := dist/$(APP_NAME).app
 # $(HOME) = your home folder → ~/Applications (Spotlight and Launchpad see it)
 INSTALLED_APP := $(HOME)/Applications/$(APP_NAME).app
 
-.PHONY: start_app test lint sync logs app_icon build_app install_app uninstall_app quit_installed_app
+.PHONY: start_app test lint sync logs app_icon build_app install_app uninstall_app quit_installed_app bump_version
 
 # open the app window
 # -m app → run the "app" folder as a program (Python runs app/__main__.py)
@@ -45,6 +45,16 @@ sync:
 # shell if: file exists (-f) → tail -f follows it; else → print a hint
 logs:
 	@if [ -f $(LOG_FILE) ]; then tail -f $(LOG_FILE); else echo "No logs yet: start the app once with make start_app"; fi
+
+# raise the version number in pyproject.toml (and uv.lock)
+#   make bump_version              0.1.0 → 0.1.1   (small fixes)
+#   make bump_version PART=minor   0.1.0 → 0.2.0   (new features)
+#   make bump_version PART=major   0.1.0 → 1.0.0   (big changes)
+#   PART ?= patch → "patch" unless you give PART=… on the command line
+#   industry term: "semantic versioning" (major.minor.patch)
+PART ?= patch
+bump_version:
+	.venv/bin/uv version --bump $(PART)
 
 # redraw the app icon (only needed after changing mac_app/make_icon.py)
 app_icon:

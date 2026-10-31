@@ -17,6 +17,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- LEARN: Content-Security-Policy (CSP) = the page's house rules for code
+       browsers (WebKit here) refuse anything these rules don't allow
+
+       script-src 'self' blob:   scripts only from the app's own files, plus
+                                 tool scripts loaded as in-memory files (shell.js);
+                                 NO code hidden in text (onerror="…" attributes, inline script tags)
+       'unsafe-eval'             needed by pywebview: it builds its bridge
+                                 functions from text; attackers still can't get
+                                 code onto the page, because inline code stays blocked
+       connect-src / img-src     no talking to, or loading from, the internet;
+                                 data: → app icons arrive as data: pictures
+       style-src 'unsafe-inline' styles may be inline (tools add a <style>);
+                                 styles can't run code
+       object-src / base-uri / form-action 'none'  → plugins, base-URL tricks
+                                 and forms are switched off entirely
+
+       a refused attempt is written to the log (see shell.js)
+       industry term: "defense in depth" (a second lock after escaping text) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob: 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <!-- LEARN: viewport = "page width = window width, no zoom" -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bao Internal Apps</title>
@@ -45,6 +64,8 @@
         <span class="label">Settings</span>
         <span class="kbd">⌘,</span>
       </div>
+      <!-- the version, filled in by shell.js; hover shows the full stamp -->
+      <div class="app-version" id="app-version"></div>
     </aside>
     <!-- the tool / Settings page is drawn in here -->
     <main class="content" id="view"></main>
