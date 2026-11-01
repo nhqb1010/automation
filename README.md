@@ -14,7 +14,13 @@ regular Mac app that you can open from Spotlight, Launchpad, or the Dock.
 *   **System Monitor**: CPU and memory use, CPU and GPU temperature, battery
     and charger power, the apps that use the most CPU and memory, storage on
     every drive, and which Mac this is (model, age, and uptime).
+*   **Daily Commit**: one small commit a day in your own notes repo, made by a
+    GitHub Actions workflow, so it runs even when your Mac is off. The app
+    shows today's status, your streak, a 12-week calendar, recent runs and
+    Actions minutes, and has buttons to set up the repo, run now, pause, and
+    edit the list of lines a post is picked from.
 *   **Logs**: the app's own log file, live, with level filters and search.
+    Each line has a coloured tag for the part of the app that wrote it.
     A red count on **Logs** in the sidebar shows errors you haven't seen.
 *   **Settings**: open the app at login, see how much CPU and memory the app
     itself uses, and change each tool's settings.
@@ -257,6 +263,7 @@ app/                 the app: window, bridge, settings, tools
   tools/
     system_monitor/  the System Monitor tool and its page
     log_viewer/      the Logs tool and its page
+    daily_commit/          the Daily Commit tool, its page, and the daily GitHub workflow
 mac_app/             the Mac app build: recipe, icon, launcher
 tests/               unit tests
 specs/               the plan and decisions for each feature
@@ -292,6 +299,7 @@ app/main.py ── creates ──▶ pywebview window ── loads ──▶ app
    └─ AppBridge ◀──────── JSON over the bridge ──── shell.js / view.js
          │
          ├─ tool registry ──▶ SystemMonitorTool ──▶ psutil, SMC, ioreg
+         │                ──▶ DailyCommitTool        ──▶ api.github.com
          │                ──▶ LogViewerTool     ──▶ app.log (new lines)
          └─ preferences   ──▶ Settings page (from each settings model)
 ```
@@ -316,11 +324,15 @@ Makefile ▶ app/__main__.py ▶ main ▶ paths ▶ config ▶ build_info
   ▶ tools/__init__ ▶ tools/base
   ▶ system_monitor/__init__ ▶ models ▶ cpu_memory ▶ recent_values
   ▶ temperature ▶ power ▶ mac_info ▶ top_apps ▶ app_icons ▶ storage
-  ▶ log_viewer/__init__ ▶ models ▶ reader
+  ▶ log_viewer/__init__ ▶ models ▶ log_areas ▶ reader
+  ▶ daily_commit/repo_template: daily.yml ▶ daily.py ▶ content.txt
+  ▶ daily_commit/__init__ ▶ models ▶ github_client ▶ connection ▶ streak_stats
+  ▶ template_sync
   ▶ app/preferences ▶ app/bridge
   ▶ ui/index.html ▶ style.css ▶ icons.js ▶ charts.js ▶ shell.js
   ▶ settings.js
   ▶ system_monitor/ui/view.html ▶ view.css ▶ view.js
+  ▶ daily_commit/ui/view.html ▶ view.css ▶ view.js
   ▶ log_viewer/ui/view.html ▶ view.css ▶ view.js
   ▶ mac_app/bao_internal_apps.spec ▶ launch.py ▶ make_icon.py
   ▶ tests/conftest ▶ one test file per module
@@ -329,7 +341,8 @@ Makefile ▶ app/__main__.py ▶ main ▶ paths ▶ config ▶ build_info
 ```
 
 The folder READMEs (app/, app/ui/, app/tools/system_monitor/,
-app/tools/log_viewer/, mac_app/, tests/) give the big picture of each folder.
+app/tools/log_viewer/, app/tools/daily_commit/, mac_app/, tests/) give the big
+picture of each folder.
 Each one starts with "start here →".
 
 ## Files that can't hold comments

@@ -71,6 +71,11 @@ body {
    ::before / ::after = extra boxes CSS can draw before / after an element */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  /* the loading spinner still turns (slower), like macOS's own spinners;
+     .spinner is more specific than * → this rule wins */
+  .spinner { animation: spin 1.6s linear infinite !important; }
+  .view-loader:not(.shown) .spinner { animation-play-state: paused !important; }
+  .toast-icon::before { animation: spin 1.6s linear infinite !important; }
 }
 
 /* shell layout */
@@ -205,6 +210,200 @@ body {
      user scrolled it instead. */
   overflow-anchor: none;
 }
+
+/* LEARN: the loading screen (shell.js)
+   the content area and the loader share one grid cell (column 2, row 1)
+   position: relative + z-index: 1 → the loader is drawn ON TOP of the page
+     (a see-through page drawn over the spinner can make WebKit treat the
+     spinner as covered and stop animating it)
+   .is-loading → visibility: hidden = not drawn at all (not just see-through)
+   when the class goes away, the page fades in (transition on opacity) */
+.app > .content, .app > .view-loader { grid-column: 2; grid-row: 1; }
+.content { transition: opacity 0.25s ease; }
+.content.is-loading { visibility: hidden; opacity: 0; pointer-events: none; transition: none; }
+/* LEARN: nothing animates while the page is hidden
+   rings, bars and colours are set straight to their final values, so the
+   page appears finished instead of filling up after the loader is gone
+   * = every element inside; !important → beats each element's own rule */
+.content.is-loading *, .content.is-loading *::before, .content.is-loading *::after {
+  transition: none !important;
+}
+
+/* LEARN: the loader is ALWAYS on the page, never removed or rebuilt
+   hidden → see-through + its spinner paused (no work, no energy)
+   .shown → fades in, spinner running again from where it stopped
+   → switching tabs quickly never restarts the animation (no stutter)
+   animation-play-state: paused / running = freeze / continue an animation */
+.view-loader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.view-loader.shown { opacity: 1; }
+.view-loader .spinner { animation-play-state: paused; }
+.view-loader.shown .spinner { animation-play-state: running; }
+
+/* LEARN: a spinner = a ring with one coloured side, turning forever */
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--track);
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  animation: spin 0.75s linear infinite;
+  /* will-change → WebKit prepares a separate layer: smooth, independent turning */
+  will-change: transform;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* the steps under the spinner: one line each, an icon before the text
+   ::before → the ○ / ✓ / ✗ mark, or a small turning ring while working */
+.view-loader-steps { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; min-width: 220px; }
+.view-loader-steps li { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-muted); }
+.view-loader-steps li::before { content: "○"; width: 14px; text-align: center; flex: none; }
+.view-loader-steps li.working { color: var(--text-primary); }
+.view-loader-steps li.done { color: var(--text-secondary); }
+.view-loader-steps li.done::before { content: "✓"; color: #4cd44c; font-weight: 700; }
+.view-loader-steps li.error { color: #f06a6a; }
+.view-loader-steps li.error::before { content: "✗"; font-weight: 700; }
+
+.view-loader-steps li.working::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  margin: 0 1.5px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+/* LEARN: the repo pill (shell.js createRepoPill): a repo name, highlighted
+   purple tint + thin border; owner soft, "/" dim, name bold and bright
+   text-overflow: ellipsis → a very long name ends in "…" instead of
+   pushing things around */
+.repo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 1px 9px 1px 7px;
+  border-radius: 999px;
+  background: rgba(144, 133, 233, 0.15);
+  border: 1px solid rgba(144, 133, 233, 0.34);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.repo-pill-icon { display: grid; color: #ada4f2; flex: none; }
+.repo-pill-icon svg { width: 12px; height: 12px; }
+.repo-pill-owner { color: #a49dda; overflow: hidden; text-overflow: ellipsis; }
+.repo-pill-slash { color: #6f6a9e; }
+.repo-pill b { color: #efecff; font-weight: 650; overflow: hidden; text-overflow: ellipsis; }
+.repo-pill.large { font-size: 14px; line-height: 20px; gap: 7px; padding: 5px 14px 5px 10px; }
+.repo-pill.large .repo-pill-icon svg { width: 15px; height: 15px; }
+
+/* LEARN: toasts (shell.js BaoToast)
+   position: fixed → pinned to the window's corner, above everything
+     (z-index 10), never part of the page's layout → nothing jumps
+   a coloured stripe on the left + the icon say what kind it is
+   @keyframes toast-in → slides up a little while fading in */
+.toasts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 36px));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 12px;
+  background: #242422;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: 12.5px;
+  animation: toast-in 0.22s ease-out;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.leaving { opacity: 0; transform: translateX(16px); }
+.toast.writing { border-left-color: var(--warning); }
+.toast.done { border-left-color: var(--good); }
+.toast.error { border-left-color: var(--critical); }
+
+.toast-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.toast.done .toast-icon { color: #4cd44c; }
+.toast.error .toast-icon { color: #f06a6a; }
+
+/* working / writing → the icon is a turning ring (the only spinner) */
+.toast.working .toast-icon::before,
+.toast.writing .toast-icon::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+.toast.writing .toast-icon::before { border-color: var(--warning); border-right-color: transparent; }
+.toast-body { flex: 1; min-width: 0; }
+.toast-title { font-weight: 600; color: var(--text-primary); }
+.toast-detail { color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+.toast-detail:empty { display: none; }
+.toast-link { display: inline-block; margin-top: 5px; color: var(--accent); text-decoration: none; }
+.toast-link[hidden] { display: none; }
+
+.toast-close {
+  flex: none;
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.toast-close:hover { color: var(--text-primary); }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* shared page pieces */
 .page-head {

@@ -42,6 +42,38 @@ Why it happens: rebuilding empties the page for a moment, so the page gets
 shorter and the browser snaps the scroll position. Then it grows back, and
 the content has moved under your mouse.
 
+## Loading screen
+
+```
+open a tab ─▶ page hidden, no animations ─▶ spinner after 150 ms
+              + the tab's steps:   ✓ CPU, memory and temperature
+                                   ◐ Battery and charger
+                                   ○ Drives
+mount() done ─▶ 2 frames to draw ─▶ the finished page fades in, in one piece
+```
+
+Every tab (Settings too) uses the same loader from shell.js. A tool's mount
+must only finish once ALL its first data is on the page. Steps are optional:
+ctx.loading.steps([{ id, label }]) once, then ctx.loading.mark(id, state)
+with "working", "done" or "error". Nothing animates while the page is hidden,
+so rings and bars appear at their real values instead of filling up later.
+
+## Toasts
+
+```
+window.BaoToast.show({ tone, title, detail, repo, link }) → { update, dismiss }
+  repo: "owner/name" → shown as the highlighted repo pill
+
+  ◐ working  blue    reading from outside (GitHub, …)
+  ◐ writing  amber   changing something outside (a commit, a run)
+  ✓ done     green   goes away after 4.5 s, may carry a link
+  ✗ error    red     stays until you close it
+```
+
+Every call that reaches outside the app gets one, so it never goes by
+unnoticed. A repo name is always a repo pill
+(window.BaoUi.createRepoPill), never plain text. Toasts float in the bottom-right corner; the page never moves.
+
 ## Tool lifecycle
 
 ```

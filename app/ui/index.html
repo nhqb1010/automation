@@ -69,6 +69,18 @@
     </aside>
     <!-- the tool / Settings page is drawn in here -->
     <main class="content" id="view"></main>
+    <!-- the loading screen: sits over the content area while a tab loads
+         (always here; shell.js fades it in / out with the class "shown") -->
+    <div class="view-loader" id="view-loader">
+      <div class="spinner"></div>
+      <div class="view-loader-text"></div>
+      <!-- the tab's loading steps (○ ◐ ✓ ✗), filled by shell.js -->
+      <ul class="view-loader-steps" id="view-loader-steps"></ul>
+    </div>
+    <!-- toasts: small cards in the bottom-right corner for calls to the
+         outside world (GitHub, …), made by shell.js BaoToast.show
+         aria-live="polite" → screen readers read new toasts out loud -->
+    <div class="toasts" id="toasts" aria-live="polite"></div>
   </div>
 
   <!-- LEARN: scripts run top to bottom, in this order

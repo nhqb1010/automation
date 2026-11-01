@@ -2,7 +2,7 @@
 //   shell.js runs THIS FILE on first open ▶ it registers mount / unmount
 //   ▶ on a timer it calls Python (bridge call ▶ system_monitor/__init__.py)
 //   ▶ redraws the cards with charts.js
-//   read next → app/tools/log_viewer/ui/view.html
+//   read next → app/tools/daily_commit/ui/view.html
 
 // System Monitor page: polls Python on a timer and redraws the cards.
 //
@@ -27,6 +27,13 @@
   // short names for the shared helpers (charts.js, icons.js)
   const C = window.BaoCharts;
   const I = window.BaoIcons;
+  // the loading screen's checklist (see mount)
+  const LOADING_STEPS = [
+    { id: "live", label: "CPU, memory and temperature" },
+    { id: "power", label: "Battery and charger" },
+    { id: "storage", label: "Drives" },
+    { id: "mac", label: "This Mac" },
+  ];
   // WARN / CRITICAL = where colours turn yellow / red
   // window not in front → no timer runs more often than this
   const BACKGROUND_MIN_SECONDS = 10;
@@ -692,13 +699,15 @@
     if (running || !mounted || document.hidden) return;
     running = true;
     refreshSession += 1;
-    refreshLiveStats();
-    refreshPower();
-    refreshStorage();
+    // LEARN: the first readings, kept as Promises → mount can wait for them
+    //   (the shell's loading screen stays up until they're in)
+    const firstReadings = [refreshLiveStats(), refreshPower(), refreshStorage()];
     liveTimer = setInterval(refreshLiveStats, effectiveSeconds(prefs.refresh_interval_seconds) * 1000);
     powerTimer = setInterval(refreshPower, effectiveSeconds(prefs.battery_refresh_seconds) * 1000);
     storageTimer = setInterval(refreshStorage, effectiveSeconds(prefs.storage_refresh_seconds) * 1000);
     updateRefreshLabel();
+    // [live, power, storage] → mount ticks them off on the loading screen
+    return firstReadings;
   }
 
   // called by → unmount, and shell.js pause (window hidden)
@@ -779,14 +788,37 @@
     // setProperty("--x", v) → set a CSS variable from JS (used in view.css)
     $(".sm").style.setProperty("--sm-top-count", prefs.top_apps_count);
     applyTopListOpenState();
-    loadMacInfo(generation);
+    // LEARN: the loading screen's checklist: one step per card group
+    //   track(id, promise) → mark it working, then done / error when the
+    //   promise settles; an error also goes to the log file
+    const track = (stepId, promise) => {
+      ctx.loading.mark(stepId, "working");
+      return Promise.resolve(promise).then(
+        () => ctx.loading.mark(stepId, "done"),
+        (error) => {
+          ctx.loading.mark(stepId, "error");
+          window.BaoTools.reportError("system_monitor", error);
+        },
+      );
+    };
+    ctx.loading.steps(LOADING_STEPS);
+    const macInfoLoaded = track("mac", loadMacInfo(generation));
     root.addEventListener("click", onTopToggleClick);
     window.addEventListener("focus", onWindowFocusChange);
     window.addEventListener("blur", onWindowFocusChange);
     mounted = true;
     // LEARN: if the window was hidden while mount was waiting, the timers stay
     // off; the shell's next "shown" event calls resume and starts them.
-    startRefreshTimers();
+    // await → mount ends once EVERY card has its first reading, so the
+    // shell's loading screen hides with the page complete
+    // || [] → window hidden: no readings started, nothing to wait for
+    const [live, power, storage] = startRefreshTimers() || [];
+    await Promise.all([
+      macInfoLoaded,
+      track("live", live),
+      track("power", power),
+      track("storage", storage),
+    ]);
   }
 
   // the tool leaves the screen: stop everything, forget the page

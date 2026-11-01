@@ -41,6 +41,11 @@
     register(id, module) {
       toolModules[id] = module;
     },
+    // a tool's own caught error → the log file, like an uncaught one
+    // called by → tool pages (e.g. a failed first reading while loading)
+    reportError(toolId, error) {
+      forwardClientError(`${toolId}: ${(error && error.message) || error}`, toolId, 0);
+    },
   };
 
   // forward page errors to the Python log file
@@ -120,11 +125,18 @@
   //   { toolId } = short for { toolId: toolId }
   function buildToolContext(toolId) {
     const api = state.api;
+    // the loading checklist belongs to the tab on screen; a tab the user
+    // already left must not change it
+    const isOnScreen = () => state.currentId === toolId;
     return {
       toolId,
       call: (action, params = {}) => api.call(toolId, action, params),
       getPreferences: () => api.get_tool_preferences(toolId),
       setPreference: (field, value) => api.update_tool_preference(toolId, field, value),
+      loading: {
+        steps: (steps) => isOnScreen() && showLoadingSteps(steps),
+        mark: (stepId, stepState) => isOnScreen() && markLoadingStep(stepId, stepState),
+      },
     };
   }
 
@@ -189,6 +201,172 @@
     });
   }
 
+  // LEARN: a GitHub repo name as a highlighted pill, used everywhere a
+  //   repo is named (page headers, cards, toasts) → one consistent look
+  //
+  //     [▣ owner / name]    owner soft, name bold, purple tint
+  //
+  //   size "small" (inline, in text) or "large" (a card's main line)
+  //   built from elements + textContent → a name can never become markup
+  //   called by → showToast below, and tool pages via window.BaoUi
+  function createRepoPill(fullName, size = "small") {
+    const pill = document.createElement("span");
+    pill.className = `repo-pill ${size}`;
+    // "me/notes" → ["me", "notes"]; no slash → the whole text is the name
+    const [owner, name] = fullName.includes("/") ? fullName.split("/") : ["", fullName];
+    const icon = document.createElement("span");
+    icon.className = "repo-pill-icon";
+    icon.innerHTML = I.svg("folder-git", size === "large" ? 15 : 12);
+    const ownerEl = document.createElement("span");
+    ownerEl.className = "repo-pill-owner";
+    ownerEl.textContent = owner;
+    const slash = document.createElement("span");
+    slash.className = "repo-pill-slash";
+    slash.textContent = owner ? "/" : "";
+    const nameEl = document.createElement("b");
+    nameEl.textContent = name;
+    pill.append(icon, ownerEl, slash, nameEl);
+    return pill;
+  }
+
+  window.BaoUi = { createRepoPill };
+
+  // LEARN: TOASTS (industry term) = small cards that pop up in a corner
+  //   used for every call that reaches OUTSIDE the app (GitHub, …)
+  //
+  //   show({ tone: "writing", title: "Committing…" })   ─▶ ◐ amber, spinning
+  //   toast.update({ tone: "done", title: "Committed" }) ─▶ ✓ green, gone in 4.5 s
+  //   toast.update({ tone: "error", detail: "…" })       ─▶ ✗ red, stays until ×
+  //
+  //   repo: "owner/name" → shown as a repo pill after the detail text
+  //   tone: "working" (reading, blue) · "writing" (changes something, amber)
+  //         "done" (green) · "error" (red)
+  //   fixed in the corner, over the page → the page itself never moves
+  //   called by → tool pages, via window.BaoToast.show(…)
+  const TOAST_DONE_MS = 4500;
+  const TOAST_LIMIT = 4;
+  const TOAST_ICON = { working: "", writing: "", done: "✓", error: "✗" };
+
+  function showToast(first) {
+    const stack = document.getElementById("toasts");
+    const el = document.createElement("div");
+    // the pieces: icon · (title, detail, link) · close button
+    el.innerHTML = `<span class="toast-icon"></span>
+      <div class="toast-body"><div class="toast-title"></div><div class="toast-detail"></div>
+        <a class="toast-link" target="_blank" rel="noopener"></a></div>
+      <button class="toast-close" title="Close">×</button>`;
+    let current = { tone: "working", title: "", detail: "", repo: null, link: null, linkText: "View on GitHub ↗" };
+    let timer = null;
+
+    // remove with a short fade (class "leaving" → view in style.css)
+    const dismiss = () => {
+      clearTimeout(timer);
+      el.classList.add("leaving");
+      setTimeout(() => el.remove(), 200);
+    };
+
+    // LEARN: { ...a, ...b } → a copy of a with b's fields on top
+    //   ≈ Python {**a, **b}; everything shown is set with textContent
+    const paint = (changes) => {
+      current = { ...current, ...changes };
+      el.className = `toast ${current.tone}`;
+      el.querySelector(".toast-icon").textContent = TOAST_ICON[current.tone] ?? "";
+      el.querySelector(".toast-title").textContent = current.title;
+      // detail text, then the repo pill (if any); empty → hidden by CSS
+      const detail = el.querySelector(".toast-detail");
+      detail.replaceChildren();
+      if (current.detail) detail.append(current.detail);
+      if (current.repo) detail.append(" ", createRepoPill(current.repo));
+      const link = el.querySelector(".toast-link");
+      link.hidden = !current.link;
+      if (current.link) {
+        link.href = current.link;
+        link.textContent = current.linkText;
+      }
+      clearTimeout(timer);
+      if (current.tone === "done") timer = setTimeout(dismiss, TOAST_DONE_MS);
+    };
+
+    el.querySelector(".toast-close").addEventListener("click", dismiss);
+    paint(first);
+    stack.appendChild(el);
+    // too many → the oldest goes first
+    while (stack.children.length > TOAST_LIMIT) stack.firstElementChild.remove();
+    return { update: paint, dismiss };
+  }
+
+  window.BaoToast = { show: showToast };
+
+  // LEARN: LOADING SCREEN (one for every tab, Settings included)
+  //
+  //   open a tab ─▶ page hidden (opacity 0) ─▶ after 150 ms: spinner shows
+  //                 tool's mount(…) waits for its FIRST data
+  //   mount done ─▶ spinner gone, the whole page fades in at once
+  //
+  //   → nothing pops in piece by piece; a fast tab (< 150 ms) never shows
+  //     the spinner at all, so there's no flash either
+  //   industry term: "loading state" / delayed spinner
+  const LOADER_DELAY_MS = 150;
+  let loaderTimer = null;
+  // bumped by every startViewLoading → a late finish of an older tab is ignored
+  let loadingRound = 0;
+
+  // called by → openView, before the new tab starts loading
+  function startViewLoading(viewName) {
+    loadingRound += 1;
+    document.getElementById("view").classList.add("is-loading");
+    const loader = document.getElementById("view-loader");
+    loader.querySelector(".view-loader-text").textContent = `Loading ${viewName}…`;
+    // a new tab → its own steps (none until the tool lists them)
+    document.getElementById("view-loader-steps").replaceChildren();
+    clearTimeout(loaderTimer);
+    // already showing (quick switching) → keep it as is, no restart
+    if (loader.classList.contains("shown")) return;
+    loaderTimer = setTimeout(() => {
+      loader.classList.add("shown");
+    }, LOADER_DELAY_MS);
+  }
+
+  // LEARN: the steps checklist on the loading screen
+  //   a tool lists its steps once: ctx.loading.steps([{ id, label }, …])
+  //   then marks each one:         ctx.loading.mark(id, "working" | "done" | "error")
+  //     ○ waiting · ◐ working · ✓ done · ✗ error
+  //   only the tab still being opened may change them (see buildToolContext)
+  function showLoadingSteps(steps) {
+    const list = document.getElementById("view-loader-steps");
+    list.replaceChildren(
+      ...steps.map((step) => {
+        const item = document.createElement("li");
+        item.dataset.step = step.id;
+        item.className = "waiting";
+        item.textContent = step.label;
+        return item;
+      }),
+    );
+  }
+
+  function markLoadingStep(stepId, stepState) {
+    const item = document.querySelector(`#view-loader-steps [data-step="${stepId}"]`);
+    if (item) item.className = stepState;
+  }
+
+  // LEARN: called by → openView, when the tab is ready (or failed: the error card shows)
+  //   two animation frames first: the browser has then laid out AND drawn
+  //   the finished page → it appears in one piece, not part by part
+  //   requestAnimationFrame(f) → run f just before the next screen update
+  function finishViewLoading() {
+    clearTimeout(loaderTimer);
+    const round = loadingRound;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        // another tab started loading meanwhile → that one decides
+        if (round !== loadingRound) return;
+        document.getElementById("view-loader").classList.remove("shown");
+        document.getElementById("view").classList.remove("is-loading");
+      }),
+    );
+  }
+
   // LEARN: every await is a pause where the user can switch to another view.
   // After each one, isStillCurrent checks we are still wanted before touching
   // the page; otherwise a slow load would overwrite whatever is now on screen.
@@ -210,15 +388,21 @@
     // opening Logs clears its error badge straight away
     if (viewId === ERROR_BADGE_TOOL_ID) refreshErrorBadge();
     const isStillCurrent = () => state.currentId === viewId;
+    // .find(f) → the first item where f is true (undefined if none)
+    const tool = state.tools.find((t) => t.id === viewId);
+    startViewLoading(viewId === "settings" ? "Settings" : tool ? tool.name : viewId);
 
     if (viewId === "settings") {
       state.current = window.BaoSettingsView;
-      await window.BaoSettingsView.mount(container, state.api);
+      // LEARN: try / finally → the loading screen goes away even on an error
+      try {
+        await window.BaoSettingsView.mount(container, state.api);
+      } finally {
+        if (isStillCurrent()) finishViewLoading();
+      }
       return;
     }
 
-    // .find(f) → the first item where f is true (undefined if none)
-    const tool = state.tools.find((t) => t.id === viewId);
     // LEARN: try / catch ≈ Python try / except
     try {
       const module = await loadToolModule(viewId);
@@ -232,6 +416,9 @@
       if (isStillCurrent()) {
         renderErrorCard(container, `${tool ? tool.name : viewId} could not load`, "Details are in logs/app.log.");
       }
+    } finally {
+      // only the tab still on screen may hide the loading screen
+      if (isStillCurrent()) finishViewLoading();
     }
   }
 

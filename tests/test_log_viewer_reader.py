@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks log_viewer/reader.py with small log files
 #   written into tmp_path (a fresh folder per test, never the real logs/)
-#   read next → pyproject.toml
+#   read next → tests/test_log_viewer_log_areas.py
 from pathlib import Path
 
 import pytest

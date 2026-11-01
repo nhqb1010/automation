@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   reader.py fills these shapes ▶ bridge turns them into JSON
 #   ▶ the Logs page reads the same field names
-#   read next → app/tools/log_viewer/reader.py
+#   read next → app/tools/log_viewer/log_areas.py
 """
 Data shapes the Logs tool sends to its page.
 
@@ -18,7 +18,9 @@ LEARN: one call from the page gives back one LogChunk
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
+
+from app.tools.log_viewer.log_areas import LogArea, find_log_area
 
 # LEARN: "OTHER" = a line that doesn't look like our log format
 #   (e.g. a traceback with no line above it to attach to)
@@ -43,6 +45,15 @@ class LogLine(BaseModel):
     message: str
     extra_lines: list[str]
     continues_previous: bool
+
+    # LEARN: @computed_field + @property → a value worked out from the
+    #   other fields, yet sent to the page like a normal field
+    #   → nothing that builds a LogLine has to pass it in
+    #   area → which part of the app wrote it + its colour (log_areas.py)
+    @computed_field
+    @property
+    def area(self) -> LogArea:
+        return find_log_area(self.source)
 
 
 class LogCursor(BaseModel):

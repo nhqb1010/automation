@@ -1,0 +1,194 @@
+<!-- LEARN: YOU ARE HERE
+       bridge load_tool_view ▶ shell.js puts THIS FRAGMENT in the content area
+       ▶ view.js fills every box from the 4 loading steps
+       read next → app/tools/daily_commit/ui/view.css -->
+
+<!-- LEARN: busy feedback (view.js runDailyCommitAction)
+     every call to GitHub shows a toast in the bottom-right corner
+     (blue = reading, amber = writing to your repo), then ✓ or ✗;
+     the pressed button glows while it waits -->
+
+<!-- LEARN: same idea as the other tools' view.html
+     a fragment (no html / head / body); every box exists from the start,
+     empty, found by class name → view.js only fills in text and classes
+     → the page is drawn ONCE and never jumps (app/ui/README.md)
+     "dc-" prefix = Daily Commit → no clash with other tools
+
+     ┌ hero ───────────────────────────────────────────────────┐
+     │ (🔥)  12  day streak                       ╭ 12/30 ╮     │
+     │       [✓ Today's post is in]               ╰ goal  ╯     │
+     └──────────────────────────────────────────────────────────┘
+     [📅 Total posts]  [🏆 Best streak]  [⚙ Workflow ● Active]
+     ┌ Last 12 weeks ■■□■■■ … ┐  ┌ Actions minutes (ring) ┐
+     ┌ Controls: ▶ Run now · [ your line … ➤ ] · Pause …      ┐
+     ┌ Recent runs (5 rows, coloured badges)                  ┐
+     ┌ Repo files → Set up / update (diff → Apply)            ┐
+     ┌ Content list → Edit (editor → Save)                    ┐
+     ┌ Connection → Test · Connect / Disconnect               ┐ -->
+<div class="dc">
+  <div class="page-head">
+    <h1>Daily Commit</h1>
+    <div class="meta num dc-meta">Loading…</div>
+  </div>
+
+  <!-- shown only when GitHub said no (bad token, no access, offline) -->
+  <div class="dc-problem" hidden>
+    <span class="dc-problem-icon" data-icon="alert"></span>
+    <div><div class="dc-problem-title">Couldn't read the repo</div><div class="dc-problem-detail"></div></div>
+  </div>
+
+  <!-- LEARN: the hero card = the one big thing you see first
+       .dc-hero gets class "lit" while the streak is above 0 → warm glow -->
+  <section class="card dc-hero">
+    <div class="dc-flame" data-icon="flame"></div>
+    <div class="dc-hero-text">
+      <div class="dc-hero-number"><span class="num dc-streak">0</span><span class="dc-streak-unit">day streak</span></div>
+      <!-- the pill: green ✓ when today is in, otherwise when the next post comes -->
+      <div class="dc-pill dc-today">Loading…</div>
+    </div>
+    <div class="dc-goal">
+      <!-- charts.js draws a ring in here (progress to the next milestone) -->
+      <div class="dc-goal-ring"></div>
+      <div class="dc-goal-label">&nbsp;</div>
+    </div>
+  </section>
+
+  <!-- three small tiles: icon square + value + one line -->
+  <div class="dc-tiles">
+    <section class="card dc-tile">
+      <div class="dc-tile-icon blue" data-icon="calendar-check"></div>
+      <div><div class="dc-tile-value num dc-total">—</div><div class="dc-tile-label">Total posts</div></div>
+    </section>
+    <section class="card dc-tile">
+      <div class="dc-tile-icon gold" data-icon="trophy"></div>
+      <div><div class="dc-tile-value num dc-best">—</div><div class="dc-tile-label">Best streak</div></div>
+    </section>
+    <section class="card dc-tile">
+      <div class="dc-tile-icon green" data-icon="workflow"></div>
+      <div class="dc-tile-text">
+        <div class="dc-tile-value dc-workflow"><i class="dc-dot"></i><span class="dc-workflow-text">—</span></div>
+        <div class="dc-tile-label dc-workflow-sub">Workflow</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="dc-row">
+    <section class="card dc-card dc-calendar-card">
+      <div class="card-title">Last 12 weeks <span class="dc-title-extra num dc-calendar-count"></span></div>
+      <!-- one grid: day names, month names and 84 squares, made once by
+           view.js; the squares stretch to fill the card -->
+      <div class="dc-calendar"></div>
+      <div class="legend"><span><i class="dc-swatch posted"></i>Posted</span><span><i class="dc-swatch"></i>No post</span><span class="dc-calendar-note">UTC days</span></div>
+    </section>
+
+    <section class="card dc-card dc-minutes-card">
+      <div class="card-title">Actions minutes</div>
+      <div class="dc-minutes-body">
+        <!-- charts.js draws the ring here -->
+        <div class="dc-minutes-ring"></div>
+        <div class="dc-minutes-text">
+          <div class="dc-minutes-big num">—</div>
+          <div class="dc-sub dc-minutes-sub">&nbsp;</div>
+          <div class="dc-sub dc-minutes-note">&nbsp;</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card dc-card">
+    <div class="card-title">Controls</div>
+    <div class="dc-controls">
+      <button class="text-btn dc-primary" data-action="run" data-needs="workflow"><span data-icon="play"></span>Run now</button>
+      <!-- the message box with its own send button on the right -->
+      <div class="dc-message-box">
+        <!-- LEARN: maxlength → the box itself refuses more than 280 characters -->
+        <input class="dc-message" type="text" maxlength="280" placeholder="Post your own line today…" spellcheck="true">
+        <button class="dc-send" data-action="run-message" data-needs="workflow" title="Run with this message"><span data-icon="send"></span></button>
+      </div>
+      <button class="text-btn dc-pause" data-action="pause" data-needs="workflow"><span data-icon="pause"></span><span class="dc-pause-label">Pause</span></button>
+      <button class="text-btn" data-action="refresh" data-needs="connection" title="Refresh"><span data-icon="refresh-cw"></span></button>
+      <!-- LEARN: target="_blank" → opens in your browser, not inside the app -->
+      <a class="text-btn dc-repo-link" target="_blank" rel="noopener" hidden><span data-icon="external-link"></span>GitHub</a>
+    </div>
+    <div class="dc-status dc-action-status">&nbsp;</div>
+  </section>
+
+  <section class="card dc-card">
+    <div class="card-title">Recent runs</div>
+    <!-- 5 rows, made once by view.js; empty rows keep their height -->
+    <div class="dc-runs"></div>
+  </section>
+
+  <section class="card dc-card">
+    <!-- the badge in the title sums the files up: "All up to date" / "1 update" -->
+    <div class="card-title">Repo files <span class="dc-badge dc-files-summary"></span></div>
+    <div class="dc-files"></div>
+    <div class="dc-controls">
+      <button class="text-btn" data-action="preview-sync" data-needs="connection"><span data-icon="git-compare"></span>Set up / update repo…</button>
+      <span class="dc-hint"><span data-icon="info"></span>Preview first · nothing is written until Apply</span>
+    </div>
+    <!-- the preview: opens under the button when asked -->
+    <div class="dc-sync-panel" hidden>
+      <div class="dc-diff"></div>
+      <div class="dc-controls">
+        <button class="text-btn dc-primary" data-action="apply-sync"><span data-icon="upload"></span>Apply (one commit)</button>
+        <button class="text-btn" data-action="cancel-sync">Cancel</button>
+      </div>
+    </div>
+    <div class="dc-status">&nbsp;</div>
+  </section>
+
+  <section class="card dc-card">
+    <div class="card-title">Content list <span class="dc-badge muted num dc-line-total"></span></div>
+    <!-- LEARN: the line the next post will use, as a quote card
+         (worked out by Python with daily.py's own picker) -->
+    <div class="dc-next">
+      <div class="dc-next-icon" data-icon="quote"></div>
+      <div class="dc-next-text">
+        <div class="dc-next-label">Today's line</div>
+        <div class="dc-next-line">—</div>
+      </div>
+      <div class="dc-next-emoji"></div>
+    </div>
+    <div class="dc-controls">
+      <button class="text-btn" data-action="edit-content" data-needs="files"><span data-icon="pencil"></span>Edit content</button>
+      <span class="dc-hint"><span data-icon="info"></span>One line = one post · # lines are notes</span>
+    </div>
+    <div class="dc-editor" hidden>
+      <textarea class="dc-textarea" spellcheck="true"></textarea>
+      <div class="dc-controls">
+        <button class="text-btn dc-primary" data-action="save-content"><span data-icon="save"></span>Save (one commit)</button>
+        <button class="text-btn" data-action="cancel-content">Cancel</button>
+        <span class="dc-sub num dc-line-count"></span>
+      </div>
+    </div>
+    <div class="dc-status">&nbsp;</div>
+  </section>
+
+  <section class="card dc-card">
+    <div class="card-title">Connection</div>
+    <!-- LEARN: the repo as a large repo pill (shell.js), then badges:
+         visibility (🔒 private / 🌐 public) and where the token lives -->
+    <div class="dc-repo">
+      <div class="dc-repo-name">Not connected</div>
+      <span class="dc-chip dc-visibility" hidden><span data-icon="lock"></span><span class="dc-chip-text"></span></span>
+      <span class="dc-chip dc-source" hidden><span data-icon="key-round"></span><span class="dc-chip-text"></span></span>
+    </div>
+    <!-- only when not connected: what to do -->
+    <div class="dc-hint dc-connection-hint" hidden><span data-icon="info"></span><span class="dc-connection-hint-text"></span></div>
+    <!-- installed app, not connected → this form (dev copy uses .env) -->
+    <div class="dc-connect-form" hidden>
+      <input class="dc-input dc-repo-input" type="text" placeholder="owner/repository" spellcheck="false">
+      <!-- LEARN: type="password" → the typed token shows as dots -->
+      <input class="dc-input dc-token-input" type="password" placeholder="Fine-grained token (github_pat_…)" autocomplete="off">
+      <button class="text-btn dc-primary" data-action="connect"><span data-icon="plug"></span>Connect</button>
+    </div>
+    <div class="dc-controls">
+      <button class="text-btn" data-action="test"><span data-icon="circle-check"></span>Test connection</button>
+      <button class="text-btn" data-action="disconnect" hidden><span data-icon="unplug"></span>Disconnect</button>
+    </div>
+    <!-- Test connection results, as ✓ / ✗ pills -->
+    <ul class="dc-checks"></ul>
+    <div class="dc-status">&nbsp;</div>
+  </section>
+</div>

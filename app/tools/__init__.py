@@ -8,10 +8,14 @@ from pathlib import Path
 
 from app.tools.base import Tool
 from app.tools.log_viewer import LogViewerTool
+from app.tools.daily_commit import DailyCommitTool
+from app.tools.daily_commit.connection import DailyCommitConnectionStore
 from app.tools.system_monitor import SystemMonitorTool
 
 
-def build_tool_registry(log_file: Path) -> list[Tool]:
+def build_tool_registry(
+    log_file: Path, daily_commit_connection_store: DailyCommitConnectionStore
+) -> list[Tool]:
     """
     LEARN: the list of tools the app shows
 
@@ -25,5 +29,11 @@ def build_tool_registry(log_file: Path) -> list[Tool]:
     SystemMonitorTool() → makes the tool → its readers start here
     LogViewerTool(log_file=…) → needs to know which file to show
       log_file = the path logging_setup.py opened (passed in by main.py)
+    DailyCommitTool(…) → needs to know where its GitHub token lives
+      (.env in the dev copy, the Keychain when installed; made by main.py)
     """
-    return [SystemMonitorTool(), LogViewerTool(log_file=log_file)]
+    return [
+        SystemMonitorTool(),
+        DailyCommitTool(connection_store=daily_commit_connection_store),
+        LogViewerTool(log_file=log_file),
+    ]

@@ -1,7 +1,7 @@
 # LEARN: YOU ARE HERE
 #   Logs page polls ▶ bridge ▶ log_viewer/__init__.py ▶ THIS FILE reads
 #   only the new part of logs/app.log ▶ LogChunk ▶ JSON ▶ page
-#   read next → app/preferences.py
+#   read next → app/tools/daily_commit/repo_template/.github/workflows/daily.yml
 """
 Reads new lines from the app's log file, a little at a time.
 
