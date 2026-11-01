@@ -28,6 +28,7 @@ make build_app
   │
   └─ pyinstaller bao_internal_apps.spec
        launch.py ─▶ follow imports ─▶ pack Python + libraries + ui folders
+                                       + Daily Commit's repo template
                                        + build_info.json + AppIcon.icns
                                    ─▶ dist/Bao Internal Apps.app
 ```
@@ -43,6 +44,10 @@ window title         Bao Internal Apps (dev)    Bao Internal Apps
 ```
 
 Both can be open at the same time; each has its own single-copy check.
+
+The Daily Commit token follows the same split: the dev copy reads it from
+.env, the installed app keeps it in the macOS Keychain. After each reinstall,
+macOS asks once whether the app may read it; choose **Always Allow**.
 
 ## Files
 

@@ -24,6 +24,10 @@ regular Mac app that you can open from Spotlight, Launchpad, or the Dock.
     A red count on **Logs** in the sidebar shows errors you haven't seen.
 *   **Settings**: open the app at login, see how much CPU and memory the app
     itself uses, and change each tool's settings.
+*   **Everywhere**: each tab opens behind a loading screen that lists what it
+    is loading, then appears complete in one go. Every call to GitHub shows a
+    toast in the corner, amber when it changes your repo. Closing the window
+    quits the app straight away.
 
 ## Requirements
 
@@ -263,7 +267,7 @@ app/                 the app: window, bridge, settings, tools
   tools/
     system_monitor/  the System Monitor tool and its page
     log_viewer/      the Logs tool and its page
-    daily_commit/          the Daily Commit tool, its page, and the daily GitHub workflow
+    daily_commit/    the Daily Commit tool, its page, and the daily GitHub workflow
 mac_app/             the Mac app build: recipe, icon, launcher
 tests/               unit tests
 specs/               the plan and decisions for each feature
@@ -299,7 +303,7 @@ app/main.py ── creates ──▶ pywebview window ── loads ──▶ app
    └─ AppBridge ◀──────── JSON over the bridge ──── shell.js / view.js
          │
          ├─ tool registry ──▶ SystemMonitorTool ──▶ psutil, SMC, ioreg
-         │                ──▶ DailyCommitTool        ──▶ api.github.com
+         │                ──▶ DailyCommitTool   ──▶ api.github.com
          │                ──▶ LogViewerTool     ──▶ app.log (new lines)
          └─ preferences   ──▶ Settings page (from each settings model)
 ```
