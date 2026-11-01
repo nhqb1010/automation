@@ -43,13 +43,13 @@ At most "Lines kept" (Settings) lines stay on the page; the oldest drop off.
 ## Area colours
 
 ```
-[app.tools.system_monitor…] → Monitor  blue      log_areas.py decides,
-[app.tools.daily_commit…]         → Daily Commit   green     the page only paints:
-[app.tools.log_viewer…]     → Logs     purple    each line carries
-[ui]                        → Page     orange    area = {id, label, color}
-[app.…] (everything else)   → App      grey
+[app.tools.system_monitor…] → Monitor       blue     log_areas.py decides,
+[app.tools.daily_commit…]   → Daily Commit  green    the page only paints:
+[app.tools.log_viewer…]     → Logs          purple   each line carries
+[ui]                        → Page          orange   area = {id, label, color}
+[app.…] (everything else)   → App           grey
 [app.tools.<new tool>…]     → its name, an automatic colour (same every time)
-[pywebview], …              → Other    dim grey
+[pywebview], …              → Other         dim grey
 ```
 
 The legend under the toolbar lists the areas seen so far.

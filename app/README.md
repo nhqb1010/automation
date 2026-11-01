@@ -20,10 +20,16 @@ __main__ ──▶ main.run_internal_apps()
                ├─ logging_setup  logs/app.log, rotating, crash hook
                ├─ single_instance  already running? ──▶ focus it, quit
                ├─ state          state.json ──▶ window, ui, preferences
-               ├─ tools          registry ──▶ [SystemMonitorTool, LogViewerTool]
+               ├─ tools          registry ──▶ [SystemMonitorTool, DailyCommitTool,
+               │                               LogViewerTool]
                ├─ bridge         the object the page can call
-               └─ webview.start  window + macOS event loop (blocks)
+               ├─ webview.start  window + macOS event loop (blocks)
+               └─ window closed  state saved ──▶ log flushed ──▶ quit at once
 ```
+
+Quitting doesn't wait for page calls still running (for example a GitHub call
+from Daily Commit): everything worth keeping is saved when the window closes,
+so the app ends straight away instead of hanging on for seconds.
 
 ## A call from the page
 
