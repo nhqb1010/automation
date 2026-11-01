@@ -1,0 +1,127 @@
+# LEARN: YOU ARE HERE
+#   copied into YOUR notes repo by the Daily Commit tool ([ Set up repo ])
+#   ▶ GitHub reads THIS FILE and runs it every day on its own servers
+#   ▶ daily.py writes today's post ▶ committed as you ▶ green square
+#   read next → app/tools/daily_commit/repo_template/daily.py
+#
+# LEARN: what this file is
+#   a GitHub Actions "workflow" = a list of steps GitHub runs for you on a
+#   fresh, empty computer it lends you (a "runner"), then throws away
+#   same system people use for CI/CD (tests on every push, deploys, …)
+#   here it's used for a timed job instead (industry term: "scheduled job")
+#
+#   where GitHub looks: .github/workflows/*.yml on the main branch
+#     → the file exists there → GitHub registers it automatically
+#
+# LEARN: YAML = a settings format built from indentation
+#   key: value           one setting
+#   key:                 a group; everything indented below belongs to it
+#     inner: value
+#   - item               one entry in a list
+#   # …                  a comment
+#   indentation = meaning → always spaces, never tabs
+#
+# LEARN: one run, start to finish
+#
+#   10:00 your time ─┐
+#   or [ Run now ] ──┴▶ GitHub starts a runner (Ubuntu Linux)
+#                         1. checkout   download this repo onto the runner
+#                         2. write      python3 daily.py → days/2026/11-03.md
+#                         3. commit     as you → push back to GitHub
+#                       runner is thrown away; the commit stays ✓
+
+# the name shown in the repo's Actions tab
+name: Daily commit
+
+# LEARN: "on" = WHEN this workflow runs (its "triggers")
+on:
+  # LEARN: schedule + cron = run on a timer
+  #   cron = a 5-part time pattern:  minute  hour  day  month  weekday
+  #   "0 3 * * *"  → minute 0, hour 3, every day, every month, any weekday
+  #   = 03:00 every day, in UTC (GitHub's clock; UTC+7 → 10:00 in Vietnam)
+  #   * = "any"
+  #   heads-up: GitHub may start scheduled runs late when it's busy
+  schedule:
+    - cron: "0 3 * * *"
+
+  # LEARN: workflow_dispatch = can also be started by hand
+  #   → the Daily Commit tool's [ Run now ] button, or the "Run workflow" button
+  #     in the repo's Actions tab
+  #   inputs = a small form shown when started by hand
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Your own line for today (leave empty for a random one)"
+        required: false
+        default: ""
+
+# LEARN: permissions = what this run's built-in key may do
+#   every run gets a temporary key (GITHUB_TOKEN), made fresh and destroyed
+#   when the run ends; by default it may only read
+#   contents: write → allowed to push the new post back to the repo
+#   nothing else is allowed (industry term: "least privilege")
+permissions:
+  contents: write
+
+# LEARN: concurrency = never two runs at the same time
+#   a scheduled run + a [ Run now ] at the same moment → the second waits
+#   (two runs pushing at once could clash)
+concurrency:
+  group: daily-commit
+  cancel-in-progress: false
+
+# LEARN: jobs = the work; one job here, named "post"
+jobs:
+  post:
+    # the lent computer: GitHub's newest Ubuntu Linux (Python 3 included)
+    runs-on: ubuntu-latest
+    # a stuck run is stopped after 5 minutes (it normally takes ~15 seconds)
+    timeout-minutes: 5
+
+    # LEARN: steps = run in order, top to bottom; any failure stops the job
+    #   "uses:" → a ready-made step someone published (an "action")
+    #   "run:"  → shell commands, like typing them in a terminal
+    steps:
+      # LEARN: actions/checkout = GitHub's official "download the repo" step
+      #   @v5 = which version of that step to use
+      - name: Download the repo
+        uses: actions/checkout@v5
+
+      # LEARN: env: → values handed to the command as environment variables
+      #   ${{ … }} = GitHub fills this in before the step runs
+      #   inputs.message = what you typed for [ Run now with a message ]
+      #   (empty for scheduled runs)
+      #
+      #   why through env, not straight inside the command:
+      #   pasting typed text into a shell command lets that text BECOME a
+      #   command; as an environment variable it stays plain text
+      #   industry term: avoiding "script injection"
+      - name: Write today's post
+        env:
+          DAILY_MESSAGE: ${{ inputs.message }}
+        run: python3 daily.py
+
+      # LEARN: making the commit count as YOU
+      #   GitHub credits a commit to the account whose email is in it
+      #   your private GitHub address: <your id>+<your name>@users.noreply.github.com
+      #   github.repository_owner    → your username (e.g. nhqb1010)
+      #   github.repository_owner_id → your account's number
+      #   → the commit lands on your graph, though the runner made it
+      #
+      # LEARN: the commands, line by line
+      #   git config …                   who the commit is from (this runner only)
+      #   git add days                   stage the new / changed post
+      #   git diff --cached --quiet      true if nothing is staged
+      #     && … && exit 0               → nothing new: say so, stop, no error
+      #   git commit -m "…"              make the commit
+      #   $(date -u +%F)                 today's date in UTC: 2026-11-03
+      #   git push                       send it to GitHub → green square
+      #   run: |  → several lines of commands, run one after another
+      - name: Commit as the repo owner
+        run: |
+          git config user.name "${{ github.repository_owner }}"
+          git config user.email "${{ github.repository_owner_id }}+${{ github.repository_owner }}@users.noreply.github.com"
+          git add days
+          git diff --cached --quiet && echo "Nothing new to commit" && exit 0
+          git commit -m "daily commit: $(date -u +%F)"
+          git push

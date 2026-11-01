@@ -40,8 +40,19 @@ UI_FOLDERS = [
     for folder in sorted((PROJECT_ROOT / "app").rglob("ui"))
     if folder.is_dir()
 ]
+# LEARN: the Daily Commit tool's repo template (the files it copies to GitHub)
+#   listed file by file → the hidden .github folder is surely included
+#   rglob("*") → every file and folder inside, at any depth (dot-names too)
+#   each file lands in its own folder → same relative paths as in dev
+TEMPLATE_DIR = PROJECT_ROOT / "app" / "tools" / "daily_commit" / "repo_template"
+TEMPLATE_FILES = [
+    (str(path), str(path.parent.relative_to(PROJECT_ROOT)))
+    for path in sorted(TEMPLATE_DIR.rglob("*"))
+    if path.is_file() and "__pycache__" not in path.parts
+]
 DATAS = [
     *UI_FOLDERS,
+    *TEMPLATE_FILES,
     # written just before this build by: python -m app.build_info
     (str(PROJECT_ROOT / "build" / "build_info.json"), "app"),
 ]

@@ -121,10 +121,12 @@
     renderAppUsage(usage);
   }
 
+  // gives back the first reading's Promise → mount waits for it
   function startUsageTimer() {
-    if (usageTimer || !root) return;
-    refreshAppUsage();
+    if (usageTimer || !root) return null;
+    const firstReading = refreshAppUsage();
     usageTimer = setInterval(refreshAppUsage, USAGE_REFRESH_MS);
+    return firstReading;
   }
 
   function stopUsageTimer() {
@@ -243,7 +245,15 @@
       root = container;
       root.addEventListener("click", onSettingsClick);
       await refreshSettingsPage();
-      if (!document.hidden) startUsageTimer();
+      // the usage card's first numbers are in before the page shows
+      // (a failed reading goes to the log; the page still opens)
+      if (!document.hidden) {
+        try {
+          await startUsageTimer();
+        } catch (error) {
+          window.BaoTools.reportError("settings", error);
+        }
+      }
     },
     unmount() {
       stopUsageTimer();

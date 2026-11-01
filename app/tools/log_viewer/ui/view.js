@@ -59,6 +59,8 @@
   let mountGeneration = 0;
   let pollSession = 0;
   let inFlightSession = null;
+  // area id → true once its dot is in the legend (reset on every open)
+  let legendAreas = new Set();
 
   const $ = (selector) => root.querySelector(selector);
 
@@ -91,8 +93,32 @@
     message.textContent = line.message;
     // append(a, b) → put both inside, in order
     text.append(source, message);
-    el.append(time, level, text);
+    el.append(time, level, createAreaTag(line.area), text);
+    addAreaToLegend(line.area);
     return el;
+  }
+
+  // LEARN: the coloured area tag (Monitor, Daily Commit, App, …)
+  //   area = { id, label, color } worked out by Python (log_areas.py)
+  //   style.setProperty("--area-color", …) → a CSS variable on this one
+  //     element; view.css paints the tag with it
+  function createAreaTag(area) {
+    const tag = document.createElement("span");
+    tag.className = "lv-area";
+    tag.textContent = area.label;
+    tag.style.setProperty("--area-color", area.color);
+    return tag;
+  }
+
+  // the first line from an area adds its dot to the legend (once)
+  function addAreaToLegend(area) {
+    if (legendAreas.has(area.id)) return;
+    legendAreas.add(area.id);
+    const item = document.createElement("span");
+    const dot = document.createElement("i");
+    dot.style.background = area.color;
+    item.append(dot, area.label);
+    $(".lv-legend").appendChild(item);
   }
 
   // traceback lines → one <pre> block under the entry (made on first need)
@@ -299,8 +325,10 @@
     if (running || !mounted || document.hidden) return;
     running = true;
     pollSession += 1;
-    pollLogLines();
+    const firstPoll = pollLogLines();
     pollTimer = setInterval(pollLogLines, prefs.refresh_interval_seconds * 1000);
+    // the first batch, as a Promise → mount waits for it (loading screen)
+    return firstPoll;
   }
 
   // called by → unmount, and shell.js pause (window hidden)
@@ -319,6 +347,7 @@
     ctx = context;
     cursor = null;
     entries = [];
+    legendAreas = new Set();
     counts = { all: 0, info: 0, warning: 0, error: 0 };
     levelFilter = "all";
     searchText = "";
@@ -328,7 +357,14 @@
       el.innerHTML = I.svg(el.dataset.icon, 14);
     });
     $(".lv-card").classList.add("empty");
+    // the loading screen's checklist: settings, then the log file
+    ctx.loading.steps([
+      { id: "settings", label: "Reading your Logs settings" },
+      { id: "file", label: "Reading the log file" },
+    ]);
+    ctx.loading.mark("settings", "working");
     prefs = await ctx.getPreferences();
+    ctx.loading.mark("settings", "done");
     // the user may have switched away while preferences were loading
     if (generation !== mountGeneration || !root) return;
     updateFollowControls();
@@ -337,7 +373,16 @@
     // scroll events don't bubble up → listen on the list itself
     $(".lv-lines").addEventListener("scroll", onListScroll);
     mounted = true;
-    startPolling();
+    // the first lines are on the page before the loading screen goes away
+    ctx.loading.mark("file", "working");
+    try {
+      await startPolling();
+      ctx.loading.mark("file", "done");
+    } catch (error) {
+      // a failed first poll goes to the log file; the page still shows
+      ctx.loading.mark("file", "error");
+      window.BaoTools.reportError("log_viewer", error);
+    }
   }
 
   // the tool leaves the screen: stop polling, forget the page

@@ -1,0 +1,58 @@
+# LEARN: YOU ARE HERE
+#   read by ▶ daily.py ▶ one line from here becomes each day's post
+#   read next → app/tools/daily_commit/__init__.py
+#
+# LEARN: how this file works
+#   one line = one possible post
+#   lines starting with # (like these) are notes for you → skipped
+#   empty lines → skipped
+#   each day gets one line, picked at random (the same line all day)
+#
+#   edit it any time: the Daily Commit tool's [ Edit content ] button,
+#   or straight on GitHub → the next run uses the new list
+#
+# ── fun facts ──────────────────────────────────────────────
+Honey never spoils 🍯 jars from ancient Egypt were still edible
+Octopuses have three hearts 🐙
+A day on Venus is longer than its year 🪐
+Bananas are berries; strawberries aren't 🍌
+Sharks are older than trees 🦈
+The Eiffel Tower grows about 15 cm in summer heat 🗼
+Wombat droppings are cube-shaped 🟫
+There are more stars in the universe than grains of sand on Earth ✨
+Sea otters hold hands while they sleep 🦦
+Hot water can freeze faster than cold (the Mpemba effect) 🧊
+A group of flamingos is called a flamboyance 🦩
+Your brain uses about 20 % of your body's energy 🧠
+Light from the Sun takes about 8 minutes to reach us ☀️
+Cows have best friends 🐄
+The first computer bug was a real moth (1947) 🦋
+Python is named after Monty Python, not the snake 🐍
+Git was written in about 10 days 🛠️
+The first website is still online: info.cern.ch 🌐
+Lightning is about five times hotter than the Sun's surface ⚡
+Butterflies taste with their feet 🦋
+#
+# ── quotes ─────────────────────────────────────────────────
+Small steps every day ▶ big results 🚶
+Done is better than perfect ✓
+Make it work, make it right, make it fast. (Kent Beck)
+Simple is better than complex. (The Zen of Python)
+The best time to plant a tree was 20 years ago; the second best is now 🌳
+Talk is cheap. Show me the code. (Linus Torvalds)
+First, solve the problem. Then, write the code. (John Johnson)
+Stay curious 🔍
+Readability counts. (The Zen of Python)
+Every expert was once a beginner 🌱
+Code is read more often than it is written 📖
+It always seems impossible until it's done. (Nelson Mandela)
+Progress, not perfection 📈
+A little progress each day adds up 🧱
+Learn something new today 🎓
+#
+# ── small nudges ───────────────────────────────────────────
+Drink some water 💧
+Stretch for a minute 🧘
+Take a short walk outside 🌤️
+Tidy one small thing 🧹
+Say thanks to someone today 🙏

@@ -7,7 +7,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, SecretStr
 
 # LEARN: pydantic-settings = pydantic models filled from the environment
 #   ≈ Django's settings.py, but typed and checked at startup
@@ -48,6 +48,28 @@ class AppSettings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     # None → this copy's default (project logs/ in dev, ~/Library/Logs installed)
     log_dir: Path | None = None
+
+    # LEARN: the Daily Commit tool's GitHub connection, DEV COPY ONLY
+    #   the installed app ignores these and uses the macOS Keychain instead
+    #   (see app/tools/daily_commit/connection.py)
+    #   validation_alias=AliasChoices(a, b) → read env name a, or else b
+    #     (the prefix BAO_ isn't added to alias names → written out in full)
+    #     older names work too: BAO_STREAK_… and BAO_DAILY_LOG_…
+    #   SecretStr → prints as "**********" → the token can't leak into a log
+    daily_commit_repository: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "BAO_DAILY_COMMIT_REPOSITORY",
+            "BAO_STREAK_REPOSITORY",
+            "BAO_DAILY_LOG_REPOSITORY",
+        ),
+    )
+    daily_commit_token: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "BAO_DAILY_COMMIT_TOKEN", "BAO_STREAK_TOKEN", "BAO_DAILY_LOG_TOKEN"
+        ),
+    )
 
     def resolve_log_dir(self) -> Path:
         # not set → default; "logs" (relative) → inside the project folder;

@@ -19,3 +19,10 @@ so you can check them without opening the window.
 Run `make lint` and `make test` on every pull request with GitHub Actions on
 a macOS runner, and check that `make build_app` still produces a complete
 app. Postponed for now.
+
+## Fewer Keychain questions after updates
+
+Every reinstall of the Mac app makes macOS ask once more whether the app may
+read its Daily Commit token from the Keychain (choose **Always Allow**). Signing
+each build with the same self-made certificate would let macOS recognise the
+new build as the same app, so the question would no longer come back.

@@ -103,12 +103,15 @@
   user-select: text;
 }
 
-/* one entry: time | level | source + message
+/* the area legend: one line, height kept even before the first area */
+.lv-legend { min-height: 16px; margin: -4px 0 10px; flex-wrap: wrap; row-gap: 4px; }
+
+/* one entry: time | level | area | source + message
    minmax(0, 1fr) → the last column may shrink; long text wraps inside it
    border-left → a coloured stripe for warnings / errors (transparent otherwise) */
 .lv-line {
   display: grid;
-  grid-template-columns: 64px 64px minmax(0, 1fr);
+  grid-template-columns: 64px 64px 94px minmax(0, 1fr);
   gap: 8px;
   padding: 1px 14px 1px 12px;
   border-left: 3px solid transparent;
@@ -119,14 +122,29 @@
 .lv-level { color: var(--text-secondary); }
 .lv-source { color: var(--text-muted); margin-right: 6px; }
 
+/* LEARN: the area tag; --area-color is set per line by view.js
+   (the colour itself comes from Python, log_areas.py)
+   color-mix(…, 16%, transparent) → the same colour, mostly see-through
+   → a soft background in the area's colour
+   justify-self: start → the tag is only as wide as its text */
+.lv-area {
+  justify-self: start;
+  color: var(--area-color);
+  background: color-mix(in srgb, var(--area-color) 16%, transparent);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /* LEARN: overflow-wrap: anywhere → a very long word (a path) may break
    mid-word instead of pushing the page wider */
 .lv-message { overflow-wrap: anywhere; }
 
 /* traceback lines under their entry; pre = keep spaces and line breaks
-   grid-column: 3 → sits in the message column, indented under it */
+   grid-column: 4 → sits in the message column, indented under it */
 .lv-extra {
-  grid-column: 3;
+  grid-column: 4;
   margin: 2px 0 4px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

@@ -25,6 +25,7 @@ LEARN: how the window works
 """
 
 import logging
+import os
 
 import webview
 
@@ -50,6 +51,7 @@ from app.state import (
     choose_window_geometry,
 )
 from app.tools import build_tool_registry
+from app.tools.daily_commit.connection import DailyCommitConnectionStore
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +87,15 @@ def run_internal_apps() -> None:
 
     store = StateStore(STATE_FILE)
     # the Logs tool shows the same file logging writes to
-    tools = build_tool_registry(log_file)
+    # the Daily Commit tool's token: .env (dev) or the Keychain (installed)
+    tools = build_tool_registry(
+        log_file=log_file,
+        daily_commit_connection_store=DailyCommitConnectionStore(
+            is_installed=installed,
+            dev_repository=settings.daily_commit_repository,
+            dev_token=settings.daily_commit_token,
+        ),
+    )
     bridge = AppBridge(
         tools=tools,
         preferences=PreferencesService(store=store, tools=tools),
@@ -132,6 +142,26 @@ def run_internal_apps() -> None:
     finally:
         guard.stop_listening_for_focus_requests()
         logger.info("Stopped")
+
+    exit_without_waiting_for_page_calls()
+
+
+def exit_without_waiting_for_page_calls() -> None:
+    """
+    LEARN: quit right away once the window is closed
+
+    called by → run_internal_apps, after the window closed normally
+    pywebview runs every page call on its own thread, and Python normally
+    waits for ALL threads before it exits
+      → a GitHub call still running (Daily Commit) kept the app open for
+        seconds after the window was gone
+    the window state is already saved (closing event) at this point, so:
+      logging.shutdown() → write out the last log lines
+      os._exit(0) → end the program now, without waiting for those threads
+    industry term: "hard exit" (skips normal clean-up, so it goes last)
+    """
+    logging.shutdown()
+    os._exit(0)
 
 
 def create_main_window(

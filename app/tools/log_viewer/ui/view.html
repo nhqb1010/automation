@@ -10,8 +10,9 @@
      ┌ Logs ─────────────────────────── ● Following ┐
      │ [All 120] [Info] [Warn 3] [Error 1]  🔍 ____  ⏸ │   toolbar
      │ ┌──────────────────────────────────────────┐ │
-     │ │ 22:12:01 INFO  [app.main] Starting …     │ │   only this box
-     │ │ 22:12:03 WARN  [storage] Drive problem … │ │   scrolls
+     │ ● Monitor ● Daily Commit ● App …             │   legend (areas seen)
+     │ │ 22:12:01 INFO  App  [app.main] Starting … │ │   only this box
+     │ │ 22:12:03 WARN  Monitor [storage] Drive …  │ │   scrolls
      │ └──────────────────────────────────────────┘ │
      └──────────────────────────────────────────────┘ -->
 <div class="lv">
@@ -40,6 +41,10 @@
     <!-- Pause ⇄ Jump to newest; view.js swaps the icon and the text -->
     <button class="text-btn lv-follow"><span class="lv-follow-icon"></span><span class="lv-follow-label">Pause</span></button>
   </div>
+
+  <!-- one coloured dot per area seen so far (view.js adds them)
+       the colours come from Python (log_viewer/log_areas.py) -->
+  <div class="legend lv-legend"></div>
 
   <section class="card lv-card">
     <div class="lv-lines"></div>

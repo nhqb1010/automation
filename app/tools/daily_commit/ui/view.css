@@ -1,0 +1,556 @@
+/* LEARN: YOU ARE HERE
+     shell.js adds THIS FILE as a <style> tag on first open
+     ▶ the look of view.html's pieces (colours from app/ui/style.css)
+     read next → app/tools/daily_commit/ui/view.js */
+
+/* LEARN: colours only this page uses, as tokens (like style.css does)
+   --flame-1 / --flame-2 → the two ends of the flame's gradient */
+.dc {
+  --flame-1: #ffb02e;
+  --flame-2: #f2542d;
+  --gold: #e7b343;
+  max-width: 980px;
+}
+
+/* the "problem" banner: GitHub said no → an icon, a title, the reason */
+.dc-problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid rgba(208, 59, 59, 0.55);
+  background: linear-gradient(90deg, rgba(208, 59, 59, 0.14), rgba(208, 59, 59, 0.04));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.dc-problem-icon { color: #f06a6a; margin-top: 1px; }
+.dc-problem-icon svg { width: 18px; height: 18px; }
+.dc-problem-title { font-size: 13px; font-weight: 650; }
+.dc-problem-detail { font-size: 12px; color: var(--text-secondary); margin-top: 2px; overflow-wrap: anywhere; }
+.dc-problem[hidden] { display: none; }
+
+/* ---------- hero ---------- */
+
+/* LEARN: radial-gradient(at top left, colour, transparent) → a soft light
+   in one corner; it fades in (transition) when the streak is "lit" */
+.dc-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(242, 84, 45, 0) 0%, transparent 60%),
+    var(--surface-1);
+  transition: background 0.6s ease;
+}
+
+.dc-hero.lit {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(242, 84, 45, 0.16) 0%, transparent 60%),
+    var(--surface-1);
+}
+
+/* LEARN: the flame badge
+   linear-gradient → orange at the top, red at the bottom
+   box-shadow with a colour and big blur → a glow around it
+   filter: grayscale(1) → no colour while the streak is 0 */
+.dc-flame {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(160deg, var(--flame-1), var(--flame-2));
+  filter: grayscale(1) brightness(0.55);
+  transition: filter 0.6s ease, box-shadow 0.6s ease;
+}
+
+.dc-flame svg { width: 36px; height: 36px; }
+
+.dc-hero.lit .dc-flame {
+  filter: none;
+  box-shadow: 0 8px 28px rgba(242, 84, 45, 0.35);
+}
+
+/* LEARN: @keyframes = a named animation; the lit flame "breathes" slowly */
+.dc-hero.lit .dc-flame svg { animation: dc-flicker 2.4s ease-in-out infinite; }
+
+@keyframes dc-flicker {
+  50% { transform: scale(1.07) translateY(-1px); }
+}
+
+.dc-hero-text { flex: 1; min-width: 0; }
+.dc-hero-number { display: flex; align-items: baseline; gap: 10px; }
+.dc-streak { font-size: 46px; font-weight: 750; line-height: 1; letter-spacing: -0.02em; min-width: 1ch; }
+.dc-hero.lit .dc-streak {
+  /* LEARN: gradient text = a gradient background clipped to the letters */
+  background: linear-gradient(160deg, var(--flame-1), var(--flame-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dc-streak-unit { font-size: 15px; color: var(--text-secondary); }
+
+/* LEARN: a "pill" = a rounded label; the colour class picks its tint */
+.dc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dc-pill.good { background: rgba(12, 163, 12, 0.14); color: #4cd44c; }
+.dc-pill.warn { background: rgba(250, 178, 25, 0.13); color: var(--warning); }
+
+.dc-goal { flex: none; text-align: center; }
+.dc-goal-label { font-size: 11px; color: var(--text-muted); margin-top: 6px; min-height: 14px; }
+.dc-goal .ring-label .big { font-size: 18px; }
+
+/* ---------- tiles ---------- */
+
+.dc-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.dc-tile { display: flex; align-items: center; gap: 12px; padding: 14px; min-width: 0; }
+.dc-tile-text { min-width: 0; }
+
+/* the coloured icon square; each colour = a soft tint + strong icon */
+.dc-tile-icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.dc-tile-icon svg { width: 20px; height: 20px; }
+.dc-tile-icon.blue { background: rgba(57, 135, 229, 0.15); color: #6aa8f0; }
+.dc-tile-icon.gold { background: rgba(231, 179, 67, 0.15); color: var(--gold); }
+.dc-tile-icon.green { background: rgba(12, 163, 12, 0.15); color: #4cd44c; }
+.dc-tile-value { font-size: 22px; font-weight: 700; min-height: 28px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.dc-tile-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* LEARN: the workflow dot; "active" → green + a soft pulse ring
+   ::after = an extra circle behind the dot that grows and fades */
+.dc-dot { position: relative; width: 9px; height: 9px; border-radius: 50%; background: var(--text-muted); flex: none; }
+.dc-workflow.active .dc-dot { background: var(--good); }
+.dc-workflow.paused .dc-dot { background: var(--warning); }
+
+.dc-workflow.active .dc-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--good);
+  animation: dc-pulse 2s ease-out infinite;
+}
+
+@keyframes dc-pulse {
+  from { transform: scale(1); opacity: 0.6; }
+  to { transform: scale(2.8); opacity: 0; }
+}
+
+/* LEARN: @container (max-width: …) → narrower content area → one column
+   (the content area is a "container", see .content in style.css) */
+.dc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+/* only really narrow windows stack things; tiles stay side by side long */
+@container (max-width: 640px) {
+  .dc-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container (max-width: 520px) {
+  .dc-tiles { grid-template-columns: minmax(0, 1fr); }
+  .dc-goal { display: none; }
+}
+
+.dc-card { margin-bottom: 14px; }
+.dc-title-extra { margin-left: auto; text-transform: none; letter-spacing: 0; }
+.dc-sub { font-size: 12px; color: var(--text-muted); min-height: 16px; }
+.dc-good { color: var(--good); }
+.dc-warn { color: var(--warning); }
+.dc-bad { color: var(--critical); }
+.dc-muted { color: var(--text-muted); }
+
+/* ---------- calendar ---------- */
+
+/* LEARN: the calendar = ONE grid, filled column by column
+   column 1 = day names; then one column per week (12)
+   row 1 = month names; rows 2–8 = Monday … Sunday
+
+          Aug        Sep
+     Mon  ■  ■  ■  ■  ■ …
+     Tue  ■  ■  ■  ■  ■
+     …
+   grid-auto-flow: column → items go DOWN a column, then to the next one
+   minmax(0, 1fr) → the 12 week columns share the card's width equally
+   → the squares grow with the window (no empty space on the right)
+   aspect-ratio: 1 → each square stays square at any width */
+.dc-calendar {
+  display: grid;
+  grid-template-columns: auto repeat(12, minmax(0, 1fr));
+  grid-template-rows: 14px repeat(7, auto);
+  grid-auto-flow: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.dc-weekday { font-size: 10px; color: var(--text-muted); align-self: center; padding-right: 6px; }
+.dc-month { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: visible; }
+
+.dc-day { aspect-ratio: 1; border-radius: 5px; background: var(--track); transition: background 0.4s; }
+
+/* posted → green, a little lighter at the top (gradient) */
+.dc-day.posted { background: linear-gradient(160deg, #3ddc5c, #12a32e); }
+.dc-day.future { background: none; outline: 1px dashed var(--border); outline-offset: -1px; }
+
+/* today: a white ring + a soft glow */
+.dc-day.today { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--text-primary); }
+.dc-day.today.posted { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px #3ddc5c, 0 0 12px rgba(61, 220, 92, 0.5); }
+
+.dc-swatch { background: var(--track); }
+.dc-swatch.posted { background: #22b83e; }
+.dc-calendar-note { margin-left: auto; }
+
+/* ---------- minutes ---------- */
+
+.dc-minutes-body { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.dc-minutes-card { display: flex; flex-direction: column; }
+.dc-minutes-card .dc-minutes-body { flex: 1; }
+.dc-minutes-text { min-width: 0; }
+.dc-minutes-big { font-size: 20px; font-weight: 700; min-height: 26px; }
+.dc-minutes-ring .ring-label .big { font-size: 17px; }
+
+/* ---------- controls ---------- */
+
+/* a row of buttons / inputs that wraps on narrow windows */
+.dc-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.card-title + .dc-controls { margin-top: 0; }
+.dc [data-icon] { display: inline-grid; }
+/* every button icon is 13 px, wherever the button sits */
+.dc .text-btn svg { width: 13px; height: 13px; }
+.dc .text-btn { padding: 7px 12px; border-radius: 9px; }
+.dc .text-btn:disabled, .dc-send:disabled { opacity: 0.4; cursor: default; }
+.text-btn[hidden] { display: none; }
+/* LEARN: an <a> styled like the buttons → no underline */
+a.text-btn { text-decoration: none; }
+
+/* the main buttons: filled blue */
+.dc .dc-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.dc .dc-primary:hover:not(:disabled) { background: #4b95ec; color: #fff; }
+
+/* the message box: input + round send button, looking like one piece */
+.dc-message-box {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px 3px 2px 12px;
+  transition: border-color 0.2s;
+}
+
+/* LEARN: :focus-within → the box itself lights up while the input inside
+   has the cursor */
+.dc-message-box:focus-within { border-color: var(--accent); }
+
+.dc-message, .dc-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 0;
+  /* inputs must allow selecting text (the app turns it off elsewhere) */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.dc-send {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.dc-send svg { width: 14px; height: 14px; }
+
+.dc-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 7px 12px;
+  min-width: 180px;
+}
+
+.dc-input:focus { border-color: var(--accent); }
+
+/* ---------- busy feedback ---------- */
+
+/* a short note under a card's buttons (e.g. "press Disconnect again");
+   progress and results are toasts (app/ui/style.css), not shown here */
+.dc-status { font-size: 12px; color: var(--text-secondary); min-height: 16px; margin-top: 10px; }
+.dc-status.error { color: var(--critical); }
+
+/* LEARN: the pressed button glows (a soft pulsing ring) while it waits
+   box-shadow 0 0 0 Npx → a ring around the button, no layout change */
+.dc .text-btn.is-busy:disabled, .dc-send.is-busy:disabled { opacity: 1; cursor: progress; }
+.dc .is-busy { animation: dc-busy-glow 1.2s ease-in-out infinite; }
+
+@keyframes dc-busy-glow {
+  50% { box-shadow: 0 0 0 3px rgba(57, 135, 229, 0.35); }
+}
+
+
+/* ---------- runs ---------- */
+
+/* recent runs: badge · what · when · how long · link */
+.dc-run {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 110px 52px 44px;
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+  min-height: 34px;
+  border-top: 1px solid var(--border);
+}
+
+.dc-run:first-child { border-top: 0; }
+.dc-run a { color: var(--accent); text-decoration: none; text-align: right; }
+.dc-run-when, .dc-run-took { color: var(--text-muted); }
+.dc-run-took { text-align: right; }
+
+/* a small status badge (runs and files share it) */
+.dc-badge {
+  justify-self: start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dc-badge:empty { padding: 0; }
+.dc-badge.good { background: rgba(12, 163, 12, 0.14); color: #4cd44c; }
+.dc-badge.bad { background: rgba(208, 59, 59, 0.14); color: #f06a6a; }
+.dc-badge.warn { background: rgba(250, 178, 25, 0.13); color: var(--warning); }
+.dc-badge.info { background: rgba(57, 135, 229, 0.15); color: #6aa8f0; }
+.dc-badge.muted { background: var(--surface-2); color: var(--text-muted); }
+/* a running run's badge gently blinks */
+.dc-badge.info.running { animation: dc-blink 1.4s ease-in-out infinite; }
+
+@keyframes dc-blink {
+  50% { opacity: 0.45; }
+}
+
+/* ---------- files ---------- */
+
+/* repo files: path · status; room for 3 rows before the first answer */
+.dc-files { min-height: 108px; }
+
+.dc-file {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  min-height: 36px;
+  border-top: 1px solid var(--border);
+}
+
+.dc-file:first-child { border-top: 0; }
+.dc-file-path { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+
+/* the diff preview: monospace, + lines green, - lines red, scrolls inside */
+.dc-sync-panel { margin-top: 12px; }
+.dc-sync-panel[hidden], .dc-editor[hidden], .dc-connect-form[hidden] { display: none; }
+
+.dc-diff {
+  max-height: 340px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.dc-diff-file { padding: 6px 12px 2px; color: var(--text-primary); font-weight: 600; }
+/* pre-wrap → keep spaces, wrap long lines */
+.dc-diff-line { padding: 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-muted); }
+.dc-diff-line.add { color: #4cd44c; background: rgba(12, 163, 12, 0.08); }
+.dc-diff-line.remove { color: #f06a6a; background: rgba(208, 59, 59, 0.08); }
+.dc-diff-line.hunk { color: var(--accent); }
+
+/* ---------- editor + connection ---------- */
+
+.dc-editor { margin-top: 12px; }
+
+.dc-textarea {
+  width: 100%;
+  height: 320px;
+  resize: vertical;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.dc-textarea:focus { border-color: var(--accent); }
+.dc-line-count { margin-left: auto; }
+
+.dc-connect-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+
+/* ---------- small shared pieces: hints, chips, badges in titles ---------- */
+
+/* LEARN: a hint = a quiet pill with an info icon, instead of a sentence */
+.dc-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.dc-hint[hidden] { display: none; }
+.dc-hint svg { width: 12px; height: 12px; }
+.card-title .dc-badge { margin-left: auto; text-transform: none; letter-spacing: 0; }
+
+/* a chip = a small rounded label with an icon (repo visibility, source) */
+.dc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dc-chip[hidden] { display: none; }
+.dc-chip svg { width: 12px; height: 12px; }
+.dc-chip.gold { background: rgba(231, 179, 67, 0.14); color: var(--gold); }
+.dc-chip.blue { background: rgba(57, 135, 229, 0.15); color: #6aa8f0; }
+.dc-chip.purple { background: rgba(144, 133, 233, 0.16); color: #ada4f2; }
+
+/* ---------- repo files ---------- */
+
+.dc-file-name { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+.dc-file-icon { color: var(--text-muted); }
+.dc-file-icon svg { width: 15px; height: 15px; }
+
+/* ---------- content: the next post as a quote card ---------- */
+
+/* LEARN: a soft blue gradient panel; the big quote mark sits on the left */
+.dc-next {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(57, 135, 229, 0.12), rgba(144, 133, 233, 0.06));
+  border: 1px solid rgba(57, 135, 229, 0.22);
+}
+
+.dc-next-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(57, 135, 229, 0.18);
+  color: #6aa8f0;
+}
+
+.dc-next-icon svg { width: 17px; height: 17px; }
+.dc-next-text { flex: 1; min-width: 0; }
+.dc-next-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #6aa8f0; }
+.dc-next-line { font-size: 15px; font-weight: 600; margin-top: 3px; overflow-wrap: anywhere; min-height: 20px; }
+.dc-next-emoji { flex: none; font-size: 26px; }
+
+/* ---------- connection ---------- */
+
+.dc-repo { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+
+.dc-repo-name { font-size: 14px; min-width: 0; max-width: 100%; margin-right: 2px; }
+.dc-connection-hint { margin-top: 12px; border-radius: 10px; padding: 8px 12px; }
+
+/* Test connection results: one pill per check */
+.dc-checks { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+
+.dc-checks li {
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.dc-checks li.good { background: rgba(12, 163, 12, 0.14); color: #4cd44c; }
+.dc-checks li.bad { background: rgba(208, 59, 59, 0.14); color: #f06a6a; }
+
+/* ---------- header: repo pill + when it was updated ---------- */
+
+.dc-meta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.dc-meta-time { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); white-space: nowrap; }
+.dc-meta-time svg { width: 12px; height: 12px; }
+/* "updating…" → the little refresh icon turns */
+.dc-meta-time.updating { color: var(--text-secondary); }
+.dc-meta-time.updating svg { animation: spin 1s linear infinite; }
