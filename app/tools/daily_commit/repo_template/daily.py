@@ -22,7 +22,8 @@ LEARN: what a post looks like
 
   > Honey never spoils 🍯
 
-  a second run on the same day (e.g. [ Run now ]) adds below:
+  a later run on the same day (the 2nd-5th scheduled run, or
+  [ Run now ]) adds below, with a different line:
 
   ---
   **10:42 UTC** · Shipped the new settings page
@@ -80,6 +81,26 @@ def pick_line_for_day(lines: list[str], day: datetime) -> str:
 
     seed = int(day.strftime("%Y%m%d"))
     return random.Random(seed).choice(lines)
+
+
+def pick_line_for_extra_run(lines: list[str], day: datetime) -> str:
+    """
+    LEARN: the line for a 2nd, 3rd … run on the same day
+
+    called by → main, when today's file already exists
+    several runs a day (see daily.yml) → each extra entry gets its own line
+    seed = date + hour + minute (e.g. 202611031317) → each run time picks
+      differently, but the same run time always picks the same line
+    the day's first line is left out (when there's more than one line)
+      → an extra entry never repeats the title line
+    """
+    first_line = pick_line_for_day(lines, day)
+    others = [line for line in lines if line != first_line] or lines
+    if not others:
+        return FALLBACK_LINE
+
+    seed = int(day.strftime("%Y%m%d%H%M"))
+    return random.Random(seed).choice(others)
 
 
 def pick_emoji_for_day(day: datetime) -> str:
@@ -142,7 +163,8 @@ def main() -> None:
 
     called by → daily.yml ("python3 daily.py")
       1. your own message (Run now with a message)?  → use it
-         otherwise → today's random line from content.txt
+         otherwise, today's first run → today's line from content.txt
+         a later run today → a different line (pick_line_for_extra_run)
       2. write / add to today's file
     datetime.now(UTC) → the current time in UTC, the same clock GitHub's
       contribution graph uses for its days
@@ -156,7 +178,13 @@ def main() -> None:
         content = (
             CONTENT_FILE.read_text(encoding="utf-8") if CONTENT_FILE.exists() else ""
         )
-        line = pick_line_for_day(read_content_lines(content), today)
+        lines = read_content_lines(content)
+        is_extra_run = find_post_path(DAYS_DIR, today).exists()
+        line = (
+            pick_line_for_extra_run(lines, today)
+            if is_extra_run
+            else pick_line_for_day(lines, today)
+        )
 
     post_path = write_today_post(
         days_dir=DAYS_DIR, day=today, line=line, emoji=pick_emoji_for_day(today)

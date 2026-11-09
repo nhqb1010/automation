@@ -324,6 +324,87 @@ a.text-btn { text-decoration: none; }
 
 .dc-input:focus { border-color: var(--accent); }
 
+/* LEARN: the Runs per day row: label · 5 joined buttons · the times
+   the chosen number is filled blue (class "selected", set by view.js) */
+.dc-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  min-height: 30px;
+}
+
+.dc-schedule-label { font-size: 12.5px; color: var(--text-secondary); }
+
+/* LEARN: a "segmented control" (industry term) = buttons joined in one bar */
+.dc-steps {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.dc-step {
+  width: 30px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dc-step:hover:not(:disabled) { color: var(--text-primary); background: var(--track); }
+.dc-step.selected { background: var(--accent); color: #fff; }
+.dc-step:disabled { cursor: default; }
+/* while an action runs every button waits; the chosen one stays readable */
+.dc-step:disabled:not(.selected) { opacity: 0.4; }
+.dc-step.is-busy:disabled { opacity: 1; cursor: progress; }
+/* LEARN: "Now  2 runs a day  [◷ 08:17] [◷ 20:17]  your time"
+   = what the repo's daily.yml says right now; each time is a small chip */
+.dc-schedule-now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.dc-schedule-now-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dc-schedule-count { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+/* the old / hand-edited schedule → amber, so it stands out */
+.dc-schedule-count.custom { color: var(--warning); }
+.dc-schedule-chips { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+
+.dc-time-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(57, 135, 229, 0.14);
+  color: #8fbcf2;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dc-time-chip svg { width: 11px; height: 11px; }
+.dc-schedule-note { font-size: 12px; color: var(--text-muted); }
+
 /* ---------- busy feedback ---------- */
 
 /* a short note under a card's buttons (e.g. "press Disconnect again");

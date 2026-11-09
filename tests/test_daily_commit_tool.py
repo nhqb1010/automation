@@ -15,7 +15,8 @@ from app.tools.daily_commit.connection import (
     DailyCommitConnectionStore,
 )
 from app.tools.daily_commit.github_client import GitHubClient
-from app.tools.daily_commit.template_sync import read_template_files
+from app.tools.daily_commit.run_schedule import write_runs_per_day_into_workflow
+from app.tools.daily_commit.template_sync import WORKFLOW_PATH, read_template_files
 from tests.test_daily_commit_github_client import FakeGitHubServer
 
 NOW = datetime(2026, 11, 3, 10, 0, tzinfo=UTC)
@@ -27,11 +28,19 @@ REPO_ANSWER = {
     "default_branch": "main",
 }
 EMPTY_REPO_HEAD = (409, {"message": "Git Repository is empty."})
+WORKFLOW_URL = f"{REPO}/contents/.github/workflows/daily.yml?ref=main"
 
 
 def encode_file(text: str) -> dict[str, str]:
     # a "contents" answer for one file
     return {"content": base64.b64encode(text.encode()).decode(), "sha": "sha-1"}
+
+
+def build_workflow_text(runs_per_day: int) -> str:
+    # the template's daily.yml, set to this many runs a day
+    return write_runs_per_day_into_workflow(
+        workflow_text=read_template_files()[WORKFLOW_PATH], runs_per_day=runs_per_day
+    )
 
 
 def build_tool(server: FakeGitHubServer, connected: bool = True) -> DailyCommitTool:
@@ -209,6 +218,48 @@ class TestDailyCommitToolReadDailyCommitFiles:
         assert section.next_post.is_today is False
         assert section.next_post.line == "my lines"
         assert section.next_post.line_count == 1
+        # the template's schedule → 2 runs a day
+        assert section.run_schedule is not None
+        assert section.run_schedule.runs_per_day == 2
+        assert section.run_schedule.run_times_utc == ["01:17", "13:17"]
+        assert section.run_schedule.is_custom is False
+
+    def test_daily_commit_tool_read_daily_commit_files_old_schedule_still_shown(
+        self,
+    ) -> None:
+        # the first template's "0 3 * * *" → no button lit, but the time shows
+        old_workflow = read_template_files()[WORKFLOW_PATH].replace(
+            '- cron: "17 1,13 * * *"', '- cron: "0 3 * * *"'
+        )
+        replies = build_set_up_repo_replies()
+        replies[("GET", WORKFLOW_URL)] = (200, encode_file(old_workflow))
+        server = FakeGitHubServer(replies)
+
+        section = build_tool(server).read_daily_commit_files(
+            branch="main", has_commits=True
+        )
+
+        assert section.run_schedule is not None
+        assert section.run_schedule.runs_per_day is None
+        assert section.run_schedule.run_times_utc == ["03:00"]
+        assert section.run_schedule.is_custom is True
+
+    def test_daily_commit_tool_read_daily_commit_files_custom_count_is_same(
+        self,
+    ) -> None:
+        # the repo runs 4 times a day → still "same", and the picker shows 4
+        replies = build_set_up_repo_replies()
+        replies[("GET", WORKFLOW_URL)] = (200, encode_file(build_workflow_text(4)))
+        server = FakeGitHubServer(replies)
+
+        section = build_tool(server).read_daily_commit_files(
+            branch="main", has_commits=True
+        )
+
+        statuses = {file.path: file.status for file in section.files}
+        assert statuses[".github/workflows/daily.yml"] == "same"
+        assert section.run_schedule is not None
+        assert section.run_schedule.runs_per_day == 4
 
     def test_daily_commit_tool_read_daily_commit_files_empty_repo(self) -> None:
         server = FakeGitHubServer({})
@@ -219,6 +270,7 @@ class TestDailyCommitToolReadDailyCommitFiles:
 
         assert {file.status for file in section.files} == {"new"}
         assert section.next_post.is_today is True
+        assert section.run_schedule is None
         assert server.requests == []
 
 
@@ -291,6 +343,57 @@ class TestDailyCommitToolSetDailyCommitPaused:
 
         assert server.requests[0].url.endswith("/disable")
         assert result.message.startswith("Paused")
+
+
+class TestDailyCommitToolSetDailyCommitRunsPerDay:
+    def test_daily_commit_tool_set_daily_commit_runs_per_day_commits_new_cron(
+        self,
+    ) -> None:
+        replies = build_set_up_repo_replies()
+        replies[("PUT", f"{REPO}/contents/.github/workflows/daily.yml")] = (
+            200,
+            {"commit": {"html_url": "https://github.com/c/4"}},
+        )
+        server = FakeGitHubServer(replies)
+
+        result = build_tool(server).set_daily_commit_runs_per_day(runs_per_day=3)
+
+        body = server.sent_json(len(server.requests) - 1)
+        assert base64.b64decode(body["content"]).decode() == build_workflow_text(3)
+        # the version that was read → GitHub refuses if it changed meanwhile
+        assert body["sha"] == "sha-1"
+        assert body["message"] == "daily commit: 3 runs a day"
+        assert result.message.startswith("Saved: 3 runs a day")
+
+    def test_daily_commit_tool_set_daily_commit_runs_per_day_same_count_no_commit(
+        self,
+    ) -> None:
+        server = FakeGitHubServer(build_set_up_repo_replies())
+
+        result = build_tool(server).set_daily_commit_runs_per_day(runs_per_day=2)
+
+        assert [request.method for request in server.requests] == ["GET"] * 3
+        assert result.message == "Already 2 runs a day."
+
+    def test_daily_commit_tool_set_daily_commit_runs_per_day_out_of_range_raises(
+        self,
+    ) -> None:
+        server = FakeGitHubServer(build_set_up_repo_replies())
+
+        with pytest.raises(ValueError, match="1 to 5"):
+            build_tool(server).set_daily_commit_runs_per_day(runs_per_day=6)
+
+        assert server.requests == []
+
+    def test_daily_commit_tool_set_daily_commit_runs_per_day_no_workflow_raises(
+        self,
+    ) -> None:
+        replies = build_set_up_repo_replies()
+        del replies[("GET", WORKFLOW_URL)]
+        server = FakeGitHubServer(replies)
+
+        with pytest.raises(ValueError, match="set up the repo first"):
+            build_tool(server).set_daily_commit_runs_per_day(runs_per_day=3)
 
 
 class TestDailyCommitToolSaveContentFile:

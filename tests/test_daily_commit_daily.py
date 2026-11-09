@@ -109,6 +109,36 @@ class TestDailyCommitDailyPickLineForDay:
         assert daily.pick_line_for_day([], FIXED_DAY) == daily.FALLBACK_LINE
 
 
+class TestDailyCommitDailyPickLineForExtraRun:
+    def test_daily_commit_daily_pick_line_for_extra_run_differs_from_first(
+        self, daily: ModuleType
+    ) -> None:
+        lines = ["a", "b", "c", "d"]
+
+        first = daily.pick_line_for_day(lines, FIXED_DAY)
+
+        assert daily.pick_line_for_extra_run(lines, FIXED_DAY) != first
+
+    def test_daily_commit_daily_pick_line_for_extra_run_same_time_same_line(
+        self, daily: ModuleType
+    ) -> None:
+        lines = ["a", "b", "c", "d"]
+
+        assert daily.pick_line_for_extra_run(
+            lines, FIXED_DAY
+        ) == daily.pick_line_for_extra_run(lines, FIXED_DAY)
+
+    def test_daily_commit_daily_pick_line_for_extra_run_single_line_reused(
+        self, daily: ModuleType
+    ) -> None:
+        assert daily.pick_line_for_extra_run(["only"], FIXED_DAY) == "only"
+
+    def test_daily_commit_daily_pick_line_for_extra_run_no_lines_uses_fallback(
+        self, daily: ModuleType
+    ) -> None:
+        assert daily.pick_line_for_extra_run([], FIXED_DAY) == daily.FALLBACK_LINE
+
+
 class TestDailyCommitDailyPickEmojiForDay:
     def test_daily_commit_daily_pick_emoji_for_day_same_day_same_emoji(
         self, daily: ModuleType
@@ -176,6 +206,20 @@ class TestDailyCommitDailyMain:
         post = (notes_repo / "days" / "2026" / "11-03.md").read_text(encoding="utf-8")
         assert "> My own words" in post
         assert "Only line" not in post
+
+    def test_daily_commit_daily_main_second_run_adds_a_different_line(
+        self, daily: ModuleType, notes_repo: Path
+    ) -> None:
+        (notes_repo / "content.txt").write_text("one\ntwo\nthree\n", encoding="utf-8")
+
+        daily.main()
+        daily.main()
+
+        post = (notes_repo / "days" / "2026" / "11-03.md").read_text(encoding="utf-8")
+        first = daily.pick_line_for_day(["one", "two", "three"], FIXED_DAY)
+        extra = daily.pick_line_for_extra_run(["one", "two", "three"], FIXED_DAY)
+        assert post.endswith(f"**10:42 UTC** · {extra}\n")
+        assert extra != first
 
     def test_daily_commit_daily_main_missing_content_uses_fallback(
         self, daily: ModuleType, notes_repo: Path

@@ -14,8 +14,9 @@ regular Mac app that you can open from Spotlight, Launchpad, or the Dock.
 *   **System Monitor**: CPU and memory use, CPU and GPU temperature, battery
     and charger power, the apps that use the most CPU and memory, storage on
     every drive, and which Mac this is (model, age, and uptime).
-*   **Daily Commit**: one small commit a day in your own notes repo, made by a
-    GitHub Actions workflow, so it runs even when your Mac is off. The app
+*   **Daily Commit**: small daily commits in your own notes repo (1 to 5 runs
+    a day, 2 by default), made by a GitHub Actions workflow, so it runs even
+    when your Mac is off. The app
     shows today's status, your streak, a 12-week calendar, recent runs and
     Actions minutes, and has buttons to set up the repo, run now, pause, and
     edit the list of lines a post is picked from.

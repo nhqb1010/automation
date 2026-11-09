@@ -1,6 +1,6 @@
 # 007: Daily Commit: one small commit a day, run by GitHub
 
-- **Status:** steps 1–6 implemented, waiting for test run
+- **Status:** steps 1–7 implemented, step 7 waiting for test run
 - **Created:** 2026-10-31
 
 ## Requirement
@@ -13,11 +13,12 @@ Keep a daily contribution streak with a small, honest post each day in your own 
 4. **Daily Commit page:** Set up and update the repo (with a diff), today ✓/✗, streak, a 12-week calendar, workflow health, Run now (with a message), Pause/Resume, Actions minutes, Edit content, Test connection, Disconnect.
 5. **Colour-coded Logs:** A colour per area with a legend, worked out in Python.
 6. **App-wide polish:** A loading screen with steps, toasts for GitHub calls, the repo name highlighted, instant quit.
+7. **Runs per day:** Choose 1 to 5 runs a day from the page (default 2), spread evenly over the day, so one commit GitHub fails to count no longer costs the day.
 
 ## Step details
 
 ### 1. Repo template
-- **Approach:** A GitHub Actions workflow runs daily at 03:00 UTC (10:00 in Vietnam) and can also be started by hand with an optional message. The script picks one line from the content list per day (the same line all day), adds an emoji, and writes days/YYYY/MM-DD.md; a second run on the same day appends. The commit is made under the owner's private GitHub address, so it counts on their graph. A typed message reaches the script as an environment variable, never inside a shell command. The script uses only Python 3.12 and the standard library, which matches GitHub's runner; Ruff is told so for that folder.
+- **Approach:** A GitHub Actions workflow runs on a schedule (twice a day by default, see step 7) and can also be started by hand with an optional message. The script picks one line from the content list per day (the same line all day), adds an emoji, and writes days/YYYY/MM-DD.md; a second run on the same day appends. The commit is made under the owner's private GitHub address, so it counts on their graph. A typed message reaches the script as an environment variable, never inside a shell command. The script uses only Python 3.12 and the standard library, which matches GitHub's runner; Ruff is told so for that folder.
 - **Files:** app/tools/daily_commit/repo_template/.github/workflows/daily.yml, app/tools/daily_commit/repo_template/daily.py, app/tools/daily_commit/repo_template/content.txt, app/tools/daily_commit/README.md, tests/test_daily_commit_daily.py, ruff.toml, cspell.json, README.md
 - **Concerns:** GitHub may start scheduled runs late on busy days. Private repos use Actions minutes (about 30 a month here, out of 2,000 free).
 
@@ -42,3 +43,8 @@ Keep a daily contribution streak with a small, honest post each day in your own 
 - **Approach:** The tool was renamed from Streak to Daily Commit; older settings names still work and the saved Keychain item keeps its original label. Every tab opens behind one loading screen: the page stays hidden with no animations until all its first data is in, a spinner appears after 150 ms with a checklist of the tab's real loading steps, then the finished page fades in at once. Daily Commit keeps its loaded data between visits, so coming back is instant, with a quiet background refresh after a minute. Every call to GitHub shows a toast (blue reading, amber writing, then green with a link or red with GitHub's reason), and the repo name always appears as a highlighted pill. Closing the window quits right away instead of waiting for GitHub calls still running.
 - **Files:** app/ui/shell.js, app/ui/style.css, app/ui/index.html, app/ui/settings.js, app/ui/icons.js, app/ui/README.md, app/tools/system_monitor/ui/view.js, app/tools/log_viewer/ui/view.js, app/tools/daily_commit/ui/view.js, app/main.py
 - **Concerns:** If a tab's first data never arrives, its loading screen stays up; GitHub calls give up after 15 seconds each, so it can't hang forever.
+
+### 7. Runs per day
+- **Approach:** On 4 Nov 2026 a run committed correctly but GitHub never counted it on the contribution graph (a GitHub outage that morning). Running several times a day covers that: every run commits, so one uncounted commit no longer leaves the day empty. The page has a 1–5 picker (default 2); runs are spread evenly from 08:00 to 20:00 Vietnam time, always at minute 17, because GitHub's docs say the start of each hour is the busiest time and scheduled runs there can be delayed or dropped. Picking a number makes one commit that changes only the schedule line of the workflow file. Updating the repo files keeps the chosen number. Later runs on the same day add a different line from the content list, not the morning one again. Next to the picker, the page always shows what is in effect now: the number of runs and each run time as a chip in the Mac's own time, also for an older or hand-edited schedule (shown in amber, with no number selected). The hero shows the next run in the Mac's own time.
+- **Files:** app/tools/daily_commit/run_schedule.py, app/tools/daily_commit/repo_template/.github/workflows/daily.yml, app/tools/daily_commit/repo_template/daily.py, app/tools/daily_commit/template_sync.py, app/tools/daily_commit/__init__.py, app/tools/daily_commit/models.py, app/tools/daily_commit/streak_stats.py, app/tools/daily_commit/ui/view.html, app/tools/daily_commit/ui/view.css, app/tools/daily_commit/ui/view.js, app/tools/daily_commit/README.md, tests/test_daily_commit_run_schedule.py, tests/test_daily_commit_template_sync.py, tests/test_daily_commit_tool.py, tests/test_daily_commit_daily.py
+- **Concerns:** Existing notes repos still have the old once-a-day schedule until the repo files are updated from the page (the files card shows "Update available"). GitHub can still start a run hours late. Five runs a day is about 150 Actions minutes a month, well inside the 2,000 free.

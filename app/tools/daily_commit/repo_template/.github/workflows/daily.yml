@@ -23,8 +23,8 @@
 #
 # LEARN: one run, start to finish
 #
-#   10:00 your time ─┐
-#   or [ Run now ] ──┴▶ GitHub starts a runner (Ubuntu Linux)
+#   each scheduled time ─┐
+#   or [ Run now ] ──────┴▶ GitHub starts a runner (Ubuntu Linux)
 #                         1. checkout   download this repo onto the runner
 #                         2. write      python3 daily.py → days/2026/11-03.md
 #                         3. commit     as you → push back to GitHub
@@ -37,12 +37,34 @@ name: Daily commit
 on:
   # LEARN: schedule + cron = run on a timer
   #   cron = a 5-part time pattern:  minute  hour  day  month  weekday
-  #   "0 3 * * *"  → minute 0, hour 3, every day, every month, any weekday
-  #   = 03:00 every day, in UTC (GitHub's clock; UTC+7 → 10:00 in Vietnam)
-  #   * = "any"
-  #   heads-up: GitHub may start scheduled runs late when it's busy
+  #   * = "any"; a comma list = several values
+  #
+  #   "17 1,13 * * *" → minute 17 of hour 1 AND hour 13, every day
+  #   = 01:17 and 13:17 UTC (GitHub's clock is always UTC)
+  #   = 08:17 and 20:17 in Vietnam (UTC+7)
+  #
+  # LEARN: runs per day (1-5, default 2), set from the Daily Commit page
+  #   the app rewrites ONLY the line below; times spread evenly 08:00-20:00
+  #   Vietnam time:
+  #     1 run   "17 1 * * *"            08:17
+  #     2 runs  "17 1,13 * * *"         08:17 · 20:17
+  #     3 runs  "17 1,7,13 * * *"       08:17 · 14:17 · 20:17
+  #     4 runs  "17 1,5,9,13 * * *"     every 4 hours
+  #     5 runs  "17 1,4,7,10,13 * * *"  every 3 hours
+  #   every run commits → if GitHub fails to count one commit on your
+  #   graph, another one that day still turns the square green
+  #
+  # LEARN: why minute 17 and not minute 0 (o'clock)?
+  #   GitHub's docs: scheduled runs can be DELAYED when Actions is busy,
+  #   and the busiest time is the start of every hour (minute 0), because
+  #   most repos schedule at :00 → their runs pile up in one queue
+  #   when that queue is long enough, some queued runs are DROPPED
+  #   → any minute away from :00 skips the pile-up; 17 is just an odd one
+  #   it only helps the run START on time; it doesn't change how GitHub
+  #   counts the commit on your graph
+  #   heads-up: even so, GitHub may start a run late (hours, at worst)
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "17 1,13 * * *"
 
   # LEARN: workflow_dispatch = can also be started by hand
   #   → the Daily Commit tool's [ Run now ] button, or the "Run workflow" button

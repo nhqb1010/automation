@@ -2,7 +2,7 @@
 #   [ Set up / update repo ] ▶ DailyCommitTool reads the repo's copies
 #   ▶ THIS FILE compares them with repo_template/ ▶ a plan with diffs
 #   ▶ shown to you first; only [ Apply ] commits it
-#   read next → app/preferences.py
+#   read next → app/tools/daily_commit/run_schedule.py
 """
 Compare the repo template with the notes repo, and plan the update.
 
@@ -17,6 +17,11 @@ LEARN: set up and update are the same thing
     content.txt ──── only if missing ▶ content.txt → new / kept
 
   content.txt is YOURS once it exists → never overwritten ("kept")
+
+LEARN: your runs-per-day choice is kept too
+  the template's daily.yml says 2 runs a day; yours may say 4
+  → before comparing, the template copy gets YOUR count written in
+  → a different count alone never shows as "Update available"
 """
 
 import difflib
@@ -32,6 +37,10 @@ from app.tools.daily_commit.models import (
     TemplateFileState,
     TemplateSyncPlan,
 )
+from app.tools.daily_commit.run_schedule import (
+    read_runs_per_day_from_workflow,
+    write_runs_per_day_into_workflow,
+)
 
 TEMPLATE_DIR = Path(__file__).parent / "repo_template"
 # repo paths, in the order shown on the page
@@ -40,6 +49,7 @@ TEMPLATE_PATHS = (".github/workflows/daily.yml", "daily.py", "content.txt")
 USER_OWNED_PATHS = frozenset({"content.txt"})
 # the workflow's file name, as GitHub's Actions API knows it
 WORKFLOW_FILE_NAME = "daily.yml"
+WORKFLOW_PATH = ".github/workflows/daily.yml"
 CONTENT_PATH = "content.txt"
 
 
@@ -53,6 +63,35 @@ def read_template_files(template_dir: Path = TEMPLATE_DIR) -> dict[str, str]:
     return {
         path: (template_dir / path).read_text(encoding="utf-8")
         for path in TEMPLATE_PATHS
+    }
+
+
+def fit_template_to_repo_schedule(
+    template_files: dict[str, str], repo_files: dict[str, str | None]
+) -> dict[str, str]:
+    """
+    LEARN: the template files, with the repo's runs-per-day kept
+
+    called by → DailyCommitTool, before every plan_template_sync
+    the repo's daily.yml says N runs (1-5) → the template's copy says N too
+    no daily.yml yet, or a schedule this app didn't write → template as is
+      (an update then brings the default, 2 runs a day)
+    gives back → a NEW dict; the one passed in isn't changed
+    """
+    repo_workflow = repo_files.get(WORKFLOW_PATH)
+    if repo_workflow is None or WORKFLOW_PATH not in template_files:
+        return dict(template_files)
+
+    runs_per_day = read_runs_per_day_from_workflow(repo_workflow)
+    if runs_per_day is None:
+        return dict(template_files)
+
+    # LEARN: {**a, key: value} → a copy of a with one entry replaced
+    return {
+        **template_files,
+        WORKFLOW_PATH: write_runs_per_day_into_workflow(
+            workflow_text=template_files[WORKFLOW_PATH], runs_per_day=runs_per_day
+        ),
     }
 
 
