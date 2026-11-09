@@ -74,7 +74,7 @@ def count_current_streak(posted: set[date], today: date) -> int:
 
     called by → DailyCommitTool overview
     today not posted YET → the streak still counts up to yesterday
-      (the day isn't over; the 10:00 run may simply not have happened)
+      (the day isn't over; today's runs may simply not have happened yet)
 
       posted: … ✓ ✓ ✓ ✓ [today ✗]  → 4
       posted: … ✓ ✗ ✓ ✓ [today ✓]  → 3

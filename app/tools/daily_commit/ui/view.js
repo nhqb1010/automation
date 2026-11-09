@@ -32,8 +32,6 @@
   const AFTER_RUN_REFRESH_DELAYS_MS = [8000, 25000, 60000];
   const RUN_ROWS = 5;
   const CALENDAR_DAYS = 12 * 7;
-  // daily.yml: cron "0 3 * * *" → 03:00 UTC
-  const DAILY_RUN_UTC_HOUR = 3;
   // the second click on Disconnect must come within this time
   const DISCONNECT_CONFIRM_MS = 4000;
   // file status → [text, badge colour]
@@ -49,7 +47,7 @@
   // only every other day is named, like GitHub's graph
   const WEEKDAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
   // buttons that CHANGE something on GitHub → "writing to your repo"
-  const WRITE_ACTIONS = new Set(["run", "run-message", "pause", "apply-sync", "save-content"]);
+  const WRITE_ACTIONS = new Set(["run", "run-message", "pause", "apply-sync", "save-content", "runs-per-day"]);
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const EVENT_TEXT = { schedule: "Daily schedule", workflow_dispatch: "Started by hand" };
   const C = window.BaoCharts;
@@ -102,13 +100,31 @@
     return `${days} day${days === 1 ? "" : "s"} ago`;
   }
 
-  // LEARN: the next 03:00 UTC, shown in YOUR time ("10:00 today")
-  //   Date.UTC(y, m, d, h) → that moment in UTC (months count from 0!)
+  // LEARN: "01:17" (a UTC time from Python) → that moment TODAY (UTC)
+  //   Date.UTC(y, m, d, h, min) → that moment in UTC (months count from 0!)
+  //   called by → formatLocalRunTime, describeNextDailyRun
+  function findTodaysUtcMoment(utcTime, now) {
+    const [hour, minute] = utcTime.split(":").map(Number);
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour, minute));
+  }
+
+  // "13:17" UTC → "20:17" on a Mac in Vietnam (the Mac's own time zone)
   //   toLocaleTimeString → the time in the Mac's own time zone
-  function describeNextDailyRun() {
+  function formatLocalRunTime(utcTime) {
+    return findTodaysUtcMoment(utcTime, new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // LEARN: the next scheduled run, shown in YOUR time ("20:17 today")
+  //   runTimesUtc → ["01:17", "13:17"] from the repo's daily.yml
+  //   every time today already passed → the first one, tomorrow
+  //   empty (a schedule this app didn't write) → no time, just "on schedule"
+  //   called by → renderHero (the pill under the streak)
+  function describeNextDailyRun(runTimesUtc) {
+    if (!runTimesUtc.length) return "on schedule";
     const now = new Date();
-    let next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), DAILY_RUN_UTC_HOUR));
-    if (next <= now) next = new Date(next.getTime() + 86400000);
+    const today = runTimesUtc.map((time) => findTodaysUtcMoment(time, now));
+    // 86400000 ms = 24 hours → the same time tomorrow
+    const next = today.find((moment) => moment > now) || new Date(today[0].getTime() + 86400000);
     const sameLocalDay = next.toDateString() === now.toDateString();
     const time = next.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     return `${time} ${sameLocalDay ? "today" : "tomorrow"}`;
@@ -189,6 +205,7 @@
     renderRuns(data);
     renderFiles(data);
     renderNextPost(data);
+    renderSchedule(data);
     renderConnection(data);
     updateButtons();
   }
@@ -241,7 +258,8 @@
       pill.classList.add("good");
       pill.textContent = "✓ Today's post is in";
     } else if (workflowState === "active") {
-      pill.textContent = `◷ Next post ${describeNextDailyRun()}`;
+      const times = data.run_schedule ? data.run_schedule.run_times_utc : [];
+      pill.textContent = `◷ Next post ${describeNextDailyRun(times)}`;
     } else {
       pill.classList.add("warn");
       pill.textContent = workflowState === "paused" ? "Paused: no post today" : "Set up the repo to start";
@@ -421,6 +439,51 @@
     total.hidden = !next;
   }
 
+  // LEARN: the Runs per day row (Controls card)
+  //   picker → the repo's count lit blue ("selected")
+  //   "Now" → what daily.yml says RIGHT NOW: the count + one chip per time,
+  //     in YOUR time; also for an older schedule ("0 3 * * *" → 1 run, 10:00)
+  //   no daily.yml yet → "—" and a hint
+  //   a schedule the picker didn't write → amber count, nothing lit,
+  //     "pick a number to switch"
+  function renderSchedule(data) {
+    const schedule = data.run_schedule;
+    const chosen = schedule ? schedule.runs_per_day : null;
+    root.querySelectorAll(".dc-step").forEach((button) => {
+      button.classList.toggle("selected", Number(button.dataset.runs) === chosen);
+    });
+    const count = $(".dc-schedule-count");
+    const chips = $(".dc-schedule-chips");
+    const note = $(".dc-schedule-note");
+    count.classList.toggle("custom", Boolean(schedule && schedule.is_custom));
+    if (!schedule) {
+      count.textContent = "—";
+      chips.replaceChildren();
+      note.textContent = data.repo ? "Set up the repo first" : "";
+      return;
+    }
+    const times = schedule.run_times_utc;
+    if (!times.length) {
+      count.textContent = "Custom schedule";
+      chips.replaceChildren();
+      note.textContent = "too complex to show · pick a number to switch";
+      return;
+    }
+    count.textContent = `${times.length} run${times.length === 1 ? "" : "s"} a day`;
+    chips.replaceChildren(
+      ...times.map((time) => {
+        const chip = document.createElement("span");
+        chip.className = "dc-time-chip num";
+        chip.innerHTML = I.svg("clock", 11);
+        chip.append(formatLocalRunTime(time));
+        // hover → the same time in UTC (GitHub's clock)
+        chip.title = `${time} UTC`;
+        return chip;
+      }),
+    );
+    note.textContent = schedule.is_custom ? "your time · old schedule, pick a number to switch" : "your time";
+  }
+
   // LEARN: the Connection card has three looks
   //   dev copy              → repo chip + "from .env" badge
   //   installed, connected  → repo chip + "Keychain" badge + Disconnect
@@ -507,7 +570,7 @@
   const EMPTY_PARTS = {
     posts: { today_posted: false, current_streak: 0, longest_streak: 0, total_posts: 0, calendar: [] },
     workflow: { workflow: null, minutes: null },
-    files: { files: [], next_post: null },
+    files: { files: [], next_post: null, run_schedule: null },
   };
 
   // one step: mark it working → call Python → mark done / error
@@ -710,6 +773,22 @@
           const result = await ctx.call("set_daily_commit_paused", { paused });
           await refreshOverview();
           return { text: result.message, link: findActionsPageLink() };
+        });
+        break;
+      }
+      case "runs-per-day": {
+        // the number on the button; the one already chosen → nothing to do
+        const runsPerDay = Number(button.dataset.runs);
+        const current = overview.run_schedule ? overview.run_schedule.runs_per_day : null;
+        if (runsPerDay === current) break;
+        const plural = runsPerDay === 1 ? "run" : "runs";
+        runDailyCommitAction(button, `Setting ${runsPerDay} ${plural} a day…`, async () => {
+          const result = await ctx.call("set_daily_commit_runs_per_day", { runs_per_day: runsPerDay });
+          await refreshOverview();
+          const link = overview.repo
+            ? `${overview.repo.html_url}/blob/${overview.repo.default_branch}/.github/workflows/daily.yml`
+            : null;
+          return { text: result.message, link };
         });
         break;
       }

@@ -21,6 +21,7 @@ LEARN: the app is only the control panel
   save_content_file     ──▶  commit your edited content.txt
   run_daily_commit_now        ──▶  start the workflow now (optional message)
   set_daily_commit_paused     ──▶  GitHub's disable / enable switch
+  set_daily_commit_runs_per_day ──▶  rewrite daily.yml's schedule (1-5 runs)
   test_daily_commit_connection / connect_… / disconnect_…  → the Connection card
 
 LEARN: every action makes a fresh GitHubClient from the saved connection
@@ -45,6 +46,7 @@ from app.tools.daily_commit.models import (
     ContentFile,
     RepoInfo,
     FilesSection,
+    RunSchedule,
     PostsSection,
     RepoSection,
     WorkflowSection,
@@ -52,6 +54,13 @@ from app.tools.daily_commit.models import (
     TemplateSyncResult,
     WorkflowInfo,
     WorkflowState,
+)
+from app.tools.daily_commit.run_schedule import (
+    check_runs_per_day,
+    read_cron_expression,
+    read_run_times_from_cron,
+    read_runs_per_day_from_workflow,
+    write_runs_per_day_into_workflow,
 )
 from app.tools.daily_commit.streak_stats import (
     build_streak_calendar,
@@ -64,7 +73,9 @@ from app.tools.daily_commit.streak_stats import (
 from app.tools.daily_commit.template_sync import (
     TEMPLATE_PATHS,
     WORKFLOW_FILE_NAME,
+    WORKFLOW_PATH,
     CONTENT_PATH,
+    fit_template_to_repo_schedule,
     list_template_file_states,
     pick_files_to_commit,
     plan_template_sync,
@@ -101,6 +112,27 @@ def open_github_client(connection: DailyCommitConnection) -> GitHubClient:
 def read_utc_now() -> datetime:
     # UTC, the clock GitHub's contribution days use
     return datetime.now(UTC)
+
+
+def describe_run_schedule(workflow_text: str | None) -> RunSchedule | None:
+    """
+    LEARN: the repo's daily.yml → runs per day + their UTC times
+
+    called by → DailyCommitTool.read_daily_commit_files
+    no daily.yml yet → None
+    the times are read from the cron line itself → always the times in
+      effect, also for an older schedule ("0 3 * * *" → 03:00 UTC)
+    """
+    if workflow_text is None:
+        return None
+
+    cron = read_cron_expression(workflow_text)
+    runs_per_day = read_runs_per_day_from_workflow(workflow_text)
+    return RunSchedule(
+        runs_per_day=runs_per_day,
+        run_times_utc=read_run_times_from_cron(cron) if cron else [],
+        is_custom=runs_per_day is None,
+    )
 
 
 def clean_run_message(message: str) -> str:
@@ -140,6 +172,7 @@ class DailyCommitTool(Tool):
             "save_content_file",
             "run_daily_commit_now",
             "set_daily_commit_paused",
+            "set_daily_commit_runs_per_day",
             "test_daily_commit_connection",
             "connect_daily_commit_repository",
             "disconnect_daily_commit_repository",
@@ -317,6 +350,7 @@ class DailyCommitTool(Tool):
     ) -> FilesSection:
         """
         LEARN: step 4: template files' status + the next post's line
+          + runs per day (read from the repo's daily.yml, fetched here anyway)
 
         today's post file is checked here too (one small call), so this
         step doesn't have to wait for step 2
@@ -326,7 +360,9 @@ class DailyCommitTool(Tool):
         copies = self._read_repo_template_copies(
             client=client, branch=branch, has_commits=has_commits
         )
-        template_files = read_template_files()
+        template_files = fit_template_to_repo_schedule(
+            template_files=read_template_files(), repo_files=copies
+        )
         plan = plan_template_sync(template_files=template_files, repo_files=copies)
         today_post = f"{DAYS_FOLDER}/{now:%Y}/{now:%m-%d}.md"
         today_posted = (
@@ -339,6 +375,7 @@ class DailyCommitTool(Tool):
             next_post=preview_next_post(
                 content_text=content_text, now=now, today_posted=today_posted
             ),
+            run_schedule=describe_run_schedule(copies.get(WORKFLOW_PATH)),
         )
 
     # ---------- actions (the page may call these) ----------
@@ -354,9 +391,10 @@ class DailyCommitTool(Tool):
         copies = self._read_repo_template_copies(
             client=client, branch=repo.default_branch, has_commits=repo.has_commits
         )
-        return plan_template_sync(
+        template_files = fit_template_to_repo_schedule(
             template_files=read_template_files(), repo_files=copies
         )
+        return plan_template_sync(template_files=template_files, repo_files=copies)
 
     def apply_template_sync(self) -> TemplateSyncResult:
         """
@@ -365,6 +403,7 @@ class DailyCommitTool(Tool):
         called by → view.js, only from the preview's confirm button
         the plan is worked out AGAIN here (the repo may have changed since
           the preview) → only what's still different gets committed
+        your runs-per-day choice is kept (fit_template_to_repo_schedule)
 
         empty repo  → one "create file" call per file (the first one makes
                       the repo's first commit; the Git Data API needs one)
@@ -375,7 +414,9 @@ class DailyCommitTool(Tool):
         copies = self._read_repo_template_copies(
             client=client, branch=repo.default_branch, has_commits=repo.has_commits
         )
-        template_files = read_template_files()
+        template_files = fit_template_to_repo_schedule(
+            template_files=read_template_files(), repo_files=copies
+        )
         plan = plan_template_sync(template_files=template_files, repo_files=copies)
         files = pick_files_to_commit(plan=plan, template_files=template_files)
         if not files:
@@ -459,8 +500,40 @@ class DailyCommitTool(Tool):
         return ActionResult(
             message="Paused: no daily posts until you resume."
             if paused
-            else "Resumed: the next post is at 10:00."
+            else "Resumed: posts start again at the next scheduled time."
         )
+
+    def set_daily_commit_runs_per_day(self, runs_per_day: int) -> ActionResult:
+        """
+        LEARN: [ Runs per day 1-5 ] → one commit that changes daily.yml
+
+        called by → view.js, when you pick a number in the Controls card
+        only the schedule line changes (run_schedule.py works it out)
+        sha → GitHub refuses if daily.yml changed meanwhile (nothing lost)
+        the token needs the "Workflows" permission to change this file
+        """
+        check_runs_per_day(runs_per_day)
+        client = self._open_connected_client()
+        repo = self._read_repo_info(client)
+        remote = client.read_file(path=WORKFLOW_PATH, branch=repo.default_branch)
+        if remote is None:
+            raise ValueError("daily.yml isn't in the repo yet: set up the repo first")
+
+        new_text = write_runs_per_day_into_workflow(
+            workflow_text=remote.text, runs_per_day=runs_per_day
+        )
+        plural = "run" if runs_per_day == 1 else "runs"
+        if new_text == remote.text:
+            return ActionResult(message=f"Already {runs_per_day} {plural} a day.")
+
+        client.write_file(
+            path=WORKFLOW_PATH,
+            text=new_text,
+            message=f"daily commit: {runs_per_day} {plural} a day",
+            sha=remote.sha,
+        )
+        logger.info(f"Daily Commit schedule changed {runs_per_day=}")
+        return ActionResult(message=f"Saved: {runs_per_day} {plural} a day from now.")
 
     def test_daily_commit_connection(self) -> ConnectionReport:
         """

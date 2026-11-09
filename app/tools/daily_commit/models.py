@@ -10,7 +10,8 @@ LEARN: the page loads in four parts (each one a step on the loading screen)
   RepoSection      connection, repo (private? link? empty?), problem
   PostsSection     today posted? streaks, the 12-week calendar
   WorkflowSection  active / paused / missing, recent runs, minutes
-  FilesSection     is each template file up to date? the next post's line
+  FilesSection     is each template file up to date? the next post's line,
+                   runs per day
 
   the page asks for them on open, on [ Refresh ], and after every action
 """
@@ -167,11 +168,34 @@ class WorkflowSection(BaseModel):
     minutes: MinutesUsage
 
 
+class RunSchedule(BaseModel):
+    """
+    LEARN: how often the repo's daily.yml runs (the Runs per day picker)
+
+    made by → DailyCommitTool (files step), from the repo's daily.yml
+    runs_per_day → 1-5 = which picker button is lit; None → a schedule
+      this app didn't write (an older copy, or edited by hand)
+    run_times_utc → the times IN EFFECT now, e.g. ["01:17", "13:17"],
+      also for an older schedule (["03:00"]); the page shows them in YOUR
+      time; empty only when the schedule is too fancy to read
+    is_custom → True when the schedule isn't one the picker writes
+    """
+
+    runs_per_day: int | None
+    run_times_utc: list[str]
+    is_custom: bool
+
+
 class FilesSection(BaseModel):
-    """LEARN: loading step 4: template files + the next post's line."""
+    """
+    LEARN: loading step 4: template files + the next post's line
+
+    run_schedule → None while daily.yml isn't in the repo yet
+    """
 
     files: list[TemplateFileState]
     next_post: NextPost
+    run_schedule: RunSchedule | None
 
 
 class TemplateFileChange(BaseModel):

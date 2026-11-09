@@ -21,6 +21,7 @@
      [📅 Total posts]  [🏆 Best streak]  [⚙ Workflow ● Active]
      ┌ Last 12 weeks ■■□■■■ … ┐  ┌ Actions minutes (ring) ┐
      ┌ Controls: ▶ Run now · [ your line … ➤ ] · Pause …      ┐
+     │   Runs per day [1][2][3][4][5]  Now 2 a day ◷08:17 ◷20:17│
      ┌ Recent runs (5 rows, coloured badges)                  ┐
      ┌ Repo files → Set up / update (diff → Apply)            ┐
      ┌ Content list → Edit (editor → Save)                    ┐
@@ -109,6 +110,28 @@
       <button class="text-btn" data-action="refresh" data-needs="connection" title="Refresh"><span data-icon="refresh-cw"></span></button>
       <!-- LEARN: target="_blank" → opens in your browser, not inside the app -->
       <a class="text-btn dc-repo-link" target="_blank" rel="noopener" hidden><span data-icon="external-link"></span>GitHub</a>
+    </div>
+    <!-- LEARN: runs per day (1-5): picking a number commits a new schedule
+         line to the repo's daily.yml (Python: set_daily_commit_runs_per_day)
+         right of it: what is IN EFFECT now, read from the repo's daily.yml
+           Now  2 runs a day   [◷ 08:17] [◷ 20:17]  your time
+         the row is always here, with its height kept → no jump when
+         the times arrive -->
+    <div class="dc-schedule">
+      <span class="dc-schedule-label">Runs per day</span>
+      <div class="dc-steps" role="group" aria-label="Runs per day">
+        <button class="dc-step" data-action="runs-per-day" data-runs="1" data-needs="workflow">1</button>
+        <button class="dc-step" data-action="runs-per-day" data-runs="2" data-needs="workflow">2</button>
+        <button class="dc-step" data-action="runs-per-day" data-runs="3" data-needs="workflow">3</button>
+        <button class="dc-step" data-action="runs-per-day" data-runs="4" data-needs="workflow">4</button>
+        <button class="dc-step" data-action="runs-per-day" data-runs="5" data-needs="workflow">5</button>
+      </div>
+      <div class="dc-schedule-now">
+        <span class="dc-schedule-now-label">Now</span>
+        <span class="dc-schedule-count">—</span>
+        <span class="dc-schedule-chips"></span>
+        <span class="dc-schedule-note"></span>
+      </div>
     </div>
     <div class="dc-status dc-action-status">&nbsp;</div>
   </section>

@@ -15,13 +15,14 @@ The app is the control panel; GitHub runs the schedule.
    (you confirm, one commit)          daily.py
                                       content.txt
 
- (app can be closed)                  every day 03:00 UTC (10:00 VN)
+ (app can be closed)                  1-5 times a day (default 2), 08:17-20:17 VN
                                         runner ▶ daily.py ▶ days/2026/11-03.md
                                                ▶ commit as you ▶ push
                                                                 │
  [ Run now ] ─────── asks GitHub ───▶ same run, right away      ▼
  [ Pause ] / [ Resume ] ────────────▶ GitHub's on/off switch  green square ✓
  [ Edit content ] ──────────────────▶ content.txt (one commit)
+ [ Runs per day 1-5 ] ──────────────▶ daily.yml's schedule line (one commit)
  page reads ◀──── posts, runs, minutes ─────────┘
 ```
 
@@ -37,7 +38,7 @@ The app is the control panel; GitHub runs the schedule.
      dev copy   → .env: BAO_DAILY_COMMIT_REPOSITORY / BAO_DAILY_COMMIT_TOKEN, restart
      installed  → Daily Commit page → Connection card → Connect (→ Keychain)
 4. Daily Commit page → [ Set up / update repo… ] → check the diff → [ Apply ]
-5. the next 10:00 run posts; or press [ Run now ]
+5. the next scheduled run posts (08:17 or 20:17 VN by default); or press [ Run now ]
 ```
 
 ## The files
@@ -54,6 +55,7 @@ daily_commit/
 ├─ connection.py     the token: .env (dev) or the Keychain (installed)
 ├─ streak_stats.py   streak, calendar, minutes (pure sums, tested)
 ├─ template_sync.py  template vs repo → diff → what to commit
+├─ run_schedule.py   runs per day → times → the cron line (why minute 17)
 └─ ui/               the Daily Commit page
 ```
 

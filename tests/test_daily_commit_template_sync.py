@@ -1,12 +1,14 @@
 # LEARN: YOU ARE HERE
 #   pytest ▶ THIS FILE checks daily_commit/template_sync.py: which template
 #   files are new / changed / same / kept, and what gets committed
-#   read next → tests/test_daily_commit_tool.py
+#   read next → tests/test_daily_commit_run_schedule.py
 from datetime import UTC, datetime, timedelta
 
 from app.tools.daily_commit.template_sync import (
     TEMPLATE_PATHS,
+    WORKFLOW_PATH,
     compare_template_file,
+    fit_template_to_repo_schedule,
     load_daily_script,
     pick_files_to_commit,
     plan_template_sync,
@@ -95,6 +97,52 @@ class TestDailyCommitTemplateSyncPlanTemplateSync:
 
         assert plan.up_to_date is True
         assert pick_files_to_commit(plan=plan, template_files=TEMPLATE) == {}
+
+
+class TestDailyCommitTemplateSyncFitTemplateToRepoSchedule:
+    def test_daily_commit_template_sync_fit_template_to_repo_schedule_keeps_count(
+        self,
+    ) -> None:
+        template = read_template_files()
+        # only the schedule line itself (the comments mention "17 1,13 * * *" too)
+        repo_workflow = template[WORKFLOW_PATH].replace(
+            '- cron: "17 1,13 * * *"', '- cron: "17 1,5,9,13 * * *"'
+        )
+
+        fitted = fit_template_to_repo_schedule(
+            template_files=template, repo_files={WORKFLOW_PATH: repo_workflow}
+        )
+
+        # only the count differs → after fitting, the copies are identical
+        assert fitted[WORKFLOW_PATH] == repo_workflow
+        assert template[WORKFLOW_PATH] != repo_workflow
+
+    def test_daily_commit_template_sync_fit_template_to_repo_schedule_old_copy(
+        self,
+    ) -> None:
+        # an older schedule ("0 3 * * *") → template unchanged → update shows
+        template = read_template_files()
+        repo_workflow = template[WORKFLOW_PATH].replace(
+            '- cron: "17 1,13 * * *"', '- cron: "0 3 * * *"'
+        )
+
+        fitted = fit_template_to_repo_schedule(
+            template_files=template, repo_files={WORKFLOW_PATH: repo_workflow}
+        )
+
+        assert fitted == template
+
+    def test_daily_commit_template_sync_fit_template_to_repo_schedule_no_workflow(
+        self,
+    ) -> None:
+        template = read_template_files()
+
+        fitted = fit_template_to_repo_schedule(
+            template_files=template, repo_files={WORKFLOW_PATH: None}
+        )
+
+        assert fitted == template
+        assert fitted is not template
 
 
 class TestDailyCommitTemplateSyncPreviewNextPost:
